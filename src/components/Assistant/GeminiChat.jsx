@@ -106,7 +106,7 @@ export default function GeminiChat() {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const messages = state.chatMessages;
+  const messages = state.chatMessages || [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -180,7 +180,7 @@ export default function GeminiChat() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 128px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '58vh' }}>
       {/* Messages */}
       <div className="chat-messages" style={{ flex: 1 }}>
         {/* Welcome message */}

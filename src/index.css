@@ -2360,3 +2360,13 @@ a { text-decoration: none; color: var(--primary); }
     stroke-dashoffset: -20;
   }
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

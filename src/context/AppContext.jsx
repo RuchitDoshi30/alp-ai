@@ -10,10 +10,25 @@ let loadedState = null;
 try {
   if (savedState) {
     loadedState = JSON.parse(savedState);
+    if (loadedState) {
+      if (!loadedState.notifications) loadedState.notifications = [];
+      if (!loadedState.chatMessages) loadedState.chatMessages = [];
+      if (!loadedState.orders) loadedState.orders = [];
+    }
   }
 } catch (e) {
   console.error('Error loading state from localStorage:', e);
 }
+
+const defaultWelcomeNotif = {
+  id: 'welcome',
+  title: 'Welcome to VenueIQ!',
+  desc: 'Explore crowd densities, order food to your seat, and ask Gemini for help.',
+  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  type: 'success',
+  icon: '🎉',
+  read: false,
+};
 
 const initialState = loadedState || {
   // Onboarding
@@ -40,6 +55,9 @@ const initialState = loadedState || {
 
   // AI Chat
   chatMessages: [],
+
+  // Notifications History
+  notifications: [defaultWelcomeNotif],
 };
 
 function buildLiveWaits(stands) {
@@ -199,14 +217,35 @@ function reducer(state, action) {
       return { ...newState, alerts: generateAlerts(newState) };
     }
 
-    case 'ADVANCE_SCORE':
+    case 'ADVANCE_SCORE': {
+      const nextIdx = Math.min(
+        state.scoreIdx + 1,
+        (EVENTS_BY_SPORT[state.selectedSport]?.scores?.home?.length ?? 1) - 1
+      );
+      const event = EVENTS_BY_SPORT[state.selectedSport];
+      
+      let scoreNotif = null;
+      if (event && nextIdx !== state.scoreIdx) {
+        const homeScore = event.scores.home[nextIdx];
+        const awayScore = event.scores.away[nextIdx];
+        const period = event.periods[nextIdx];
+        scoreNotif = {
+          id: `notif-score-${Date.now()}`,
+          title: `Match Update: ${event.home.shortName} vs ${event.away.shortName}`,
+          desc: `Score advanced to ${event.home.shortName} ${homeScore} - ${awayScore} ${event.away.shortName} (${event.periodLabel}: ${period})`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'info',
+          icon: '⚡',
+          read: false,
+        };
+      }
+
       return {
         ...state,
-        scoreIdx: Math.min(
-          state.scoreIdx + 1,
-          (EVENTS_BY_SPORT[state.selectedSport]?.scores?.home?.length ?? 1) - 1
-        ),
+        scoreIdx: nextIdx,
+        notifications: scoreNotif ? [scoreNotif, ...(state.notifications || [])] : (state.notifications || [])
       };
+    }
 
     case 'ADD_TO_CART': {
       const exists = state.cart.find(i => i.id === action.item.id);
@@ -231,22 +270,61 @@ function reducer(state, action) {
 
     case 'PLACE_ORDER': {
       const order = {
-        id: `ORD-${Date.now()}`,
+        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
         items: [...state.cart],
         total: state.cart.reduce((s, i) => s + i.price * i.qty, 0),
         status: 0, // 0=received, 1=prep, 2=ready, 3=delivered
         placedAt: new Date().toISOString(),
       };
-      return { ...state, cart: [], activeOrder: order, orders: [order, ...state.orders] };
+
+      const orderNotif = {
+        id: `notif-order-${Date.now()}`,
+        title: 'Order Placed!',
+        desc: `Your food order ${order.id} has been received and is now preparing.`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'success',
+        icon: '🍔',
+        read: false,
+      };
+
+      return { 
+        ...state, 
+        cart: [], 
+        activeOrder: order, 
+        orders: [order, ...state.orders],
+        notifications: [orderNotif, ...(state.notifications || [])]
+      };
     }
 
     case 'ADVANCE_ORDER': {
       if (!state.activeOrder) return state;
-      const updated = { ...state.activeOrder, status: Math.min(3, state.activeOrder.status + 1) };
+      const newStatus = Math.min(3, state.activeOrder.status + 1);
+      const updated = { ...state.activeOrder, status: newStatus };
+
+      const statusLabels = ['Received', 'Preparing', 'Ready for Pickup', 'Delivered'];
+      const statusIcons = ['🛒', '👨‍🍳', '📦', '✅'];
+      const statusDescs = [
+        `Order ${updated.id} has been received.`,
+        `Chef is preparing your order ${updated.id}.`,
+        `Order ${updated.id} is ready at the counter!`,
+        `Order ${updated.id} has been successfully delivered to your seat.`
+      ];
+
+      const statusNotif = {
+        id: `notif-order-status-${Date.now()}`,
+        title: `Order Status: ${statusLabels[newStatus]}`,
+        desc: statusDescs[newStatus],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: newStatus === 3 ? 'success' : newStatus === 2 ? 'accent' : 'info',
+        icon: statusIcons[newStatus],
+        read: false,
+      };
+
       return {
         ...state,
         activeOrder: updated,
         orders: state.orders.map(o => o.id === updated.id ? updated : o),
+        notifications: [statusNotif, ...(state.notifications || [])]
       };
     }
 
@@ -258,7 +336,57 @@ function reducer(state, action) {
         ...state, 
         selectedSport: action.sport, 
         onboarded: false, // Switching sports requires entering ticket details again!
-        scoreIdx: 2 
+        scoreIdx: 2,
+        notifications: [
+          {
+            id: `notif-switch-${Date.now()}`,
+            title: `Sport Switched to ${SPORTS[action.sport]?.name || action.sport}`,
+            desc: `Complete your ticket verification to enter the match portal.`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: 'info',
+            icon: '🔄',
+            read: false,
+          },
+          ...(state.notifications || [])
+        ]
+      };
+
+    case 'SUBMIT_PREDICTION': {
+      const predNotif = {
+        id: `notif-prediction-${Date.now()}`,
+        title: 'Prediction Locked!',
+        desc: `You predicted ${action.team} will score next! Reward coupon earned: ${action.coupon} (${action.reward}).`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'success',
+        icon: '🎯',
+        read: false,
+      };
+      return {
+        ...state,
+        notifications: [predNotif, ...(state.notifications || [])]
+      };
+    }
+
+    case 'ADD_NOTIFICATION': {
+      const newNotif = {
+        id: `notif-custom-${Date.now()}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
+        ...action.notification
+      };
+      return {
+        ...state,
+        notifications: [newNotif, ...(state.notifications || [])]
+      };
+    }
+
+    case 'CLEAR_NOTIFICATIONS':
+      return { ...state, notifications: [] };
+
+    case 'MARK_NOTIFICATIONS_READ':
+      return {
+        ...state,
+        notifications: (state.notifications || []).map(n => ({ ...n, read: true }))
       };
 
     case 'RESET_PORTAL':
@@ -278,6 +406,7 @@ function reducer(state, action) {
         activeOrder: null,
         alerts: [],
         chatMessages: [],
+        notifications: [defaultWelcomeNotif],
       };
 
     default:

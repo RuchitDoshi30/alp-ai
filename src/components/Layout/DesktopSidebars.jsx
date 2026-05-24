@@ -306,7 +306,7 @@ export function LeftSidebar() {
 
 // ─── RIGHT SIDEBAR: ADS & SPONSORS & INTERACTIVE prediction ────────
 export function RightSidebar() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const [adIdx, setAdIdx] = useState(0);
   const [userPrediction, setUserPrediction] = useState(null);
   const [predictionFeedback, setPredictionFeedback] = useState(null);
@@ -323,12 +323,23 @@ export function RightSidebar() {
 
   const handlePredict = (team) => {
     setUserPrediction(team);
+    const couponCode = currentAd.brand === 'Dream11' ? 'D11VENUE50' : 'INSTAFAST20';
+    const rewardName = currentAd.brand === 'Dream11' ? '₹50 Free Play Bonus' : 'Swiggy Instamart 20% Off Code';
+
+    // Log prediction to notification history center
+    dispatch({
+      type: 'SUBMIT_PREDICTION',
+      team: team,
+      coupon: couponCode,
+      reward: rewardName
+    });
+
     setTimeout(() => {
       setPredictionFeedback({
         title: '🎯 Prediction Locked!',
         desc: `You predicted ${team}! Here is a sponsor reward:`,
-        coupon: currentAd.brand === 'Dream11' ? 'D11VENUE50' : 'INSTAFAST20',
-        reward: currentAd.brand === 'Dream11' ? '₹50 Free Play Bonus' : 'Swiggy Instamart 20% Off Code',
+        coupon: couponCode,
+        reward: rewardName,
       });
     }, 400);
   };
