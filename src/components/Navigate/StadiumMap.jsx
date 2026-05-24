@@ -199,7 +199,8 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
                 r={5}
                 fill="#2563EB"
                 stroke="white"
-                strokeWidth={2}
+                strokeWidth={1.5}
+                style={{ animation: 'live-pulse 1.5s infinite' }}
               />
             )}
           </g>
