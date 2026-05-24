@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VenueIQ</string>
+    <string name="title_activity_main">VenueIQ</string>
+    <string name="package_name">com.venueiq.app</string>
+    <string name="custom_url_scheme">com.venueiq.app</string>
+</resources>

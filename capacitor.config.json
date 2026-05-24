@@ -1,0 +1,6 @@
+{
+  "appId": "com.venueiq.app",
+  "appName": "VenueIQ",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

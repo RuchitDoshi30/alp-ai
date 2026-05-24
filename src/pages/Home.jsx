@@ -265,6 +265,43 @@ function SportSwitcher() {
 
 export default function Home() {
   const { state, dispatch } = useApp();
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    // Check display mode
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsStandalone(true);
+    }
+
+    // Detect iOS
+    const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(isIosDevice);
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   // Rotating ads for carousel
   const carouselAds = ADS.slice(0, 5);
@@ -273,6 +310,69 @@ export default function Home() {
     <div className="page-enter">
       {/* Score Banner */}
       <ScoreBanner />
+
+      {/* PWA Install Prompt (Android / Chrome) */}
+      {isInstallable && !isStandalone && (
+        <div style={{
+          margin: '14px 16px 0',
+          padding: '14px 16px',
+          background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)',
+          border: '1.5px solid var(--primary-mid)',
+          borderRadius: 'var(--radius)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: 'var(--shadow-sm)',
+          animation: 'fadeSlideIn 0.3s ease',
+        }}>
+          <span style={{ fontSize: '1.8rem', background: 'white', padding: '6px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>🏟️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '800', fontSize: '0.875rem', color: 'var(--primary-dark)' }}>Install VenueIQ App</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Add to home screen for live stadium features & quick shortcuts!</div>
+          </div>
+          <button 
+            onClick={handleInstallClick}
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              padding: '6px 14px',
+              borderRadius: '99px',
+              fontWeight: '700',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-sm)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Install
+          </button>
+        </div>
+      )}
+
+      {/* iOS PWA Install Guide */}
+      {isIOS && !isStandalone && (
+        <div style={{
+          margin: '14px 16px 0',
+          padding: '14px 16px',
+          background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)',
+          border: '1.5px solid var(--primary-mid)',
+          borderRadius: 'var(--radius)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: 'var(--shadow-sm)',
+          animation: 'fadeSlideIn 0.3s ease',
+        }}>
+          <span style={{ fontSize: '1.8rem', background: 'white', padding: '6px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>🏟️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '800', fontSize: '0.875rem', color: 'var(--primary-dark)' }}>Install VenueIQ on iPhone</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Tap <span style={{ fontWeight: '700' }}>Share</span> 📤 then select <span style={{ fontWeight: '700' }}>Add to Home Screen</span>.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Smart Alerts */}
       <div style={{ paddingTop: '4px' }}>
