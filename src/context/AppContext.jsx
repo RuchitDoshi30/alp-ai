@@ -1,25 +1,12 @@
-import { createContext, useReducer, useEffect, useRef } from 'react';
-import { SPORTS, EVENTS_BY_SPORT } from '../data/mockEvent';
-import { STANDS } from '../data/mockMenu';
-import { SECTIONS, GATES, POIS, addNoise } from '../data/mockCrowd';
+import { createContext, useReducer, useEffect, useRef, useCallback } from 'react';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshSession } from '../api/auth';
+import { getEvents } from '../api/events';
+import { getCrowdData } from '../api/venues';
+import { getMyTickets, verifyTicket } from '../api/tickets';
+import { getVendors, getQueueStatus } from '../api/food';
+import { setAccessToken } from '../api/client';
 
 export const AppContext = createContext(null);
-
-const savedState = localStorage.getItem('venueiq_state');
-let loadedState = null;
-try {
-  if (savedState) {
-    loadedState = JSON.parse(savedState);
-    if (loadedState) {
-      if (!loadedState.notifications) loadedState.notifications = [];
-      if (!loadedState.chatMessages) loadedState.chatMessages = [];
-      if (!loadedState.orders) loadedState.orders = [];
-      if (!loadedState.poiFilter) loadedState.poiFilter = 'all';
-    }
-  }
-} catch (e) {
-  console.error('Error loading state from localStorage:', e);
-}
 
 const defaultWelcomeNotif = {
   id: 'welcome',
@@ -31,138 +18,78 @@ const defaultWelcomeNotif = {
   read: false,
 };
 
-const initialState = loadedState || {
-  // Onboarding
+const initialState = {
+  // Onboarding (same flow as before)
   onboarded: false,
   selectedSport: null,
+
+  // Auth (transparent to user)
+  user: null,
+
+  // Live data from API
+  event: null,
+  venue: null,
+  ticket: null,
+  crowdZones: [],
+  gates: [],
+  vendors: [],
+  queueStatuses: [],
 
   // Navigation
   activePage: 'home',
   poiFilter: 'all',
 
-  // Event & Score
-  scoreIdx: 2, // current period index
-  liveWaitTimes: {},  // standId -> minutes
-  crowdDensities: {}, // sectionId -> 0-1
-  gateCongestion: {}, // gateId -> 0-1
-  poiWaits: {},       // poiId -> minutes
-
-  // Orders
+  // Client-side state
   cart: [],
-  orders: [], // completed orders
+  orders: [],
   activeOrder: null,
-
-  // Alerts
   alerts: [],
-
-  // AI Chat
   chatMessages: [],
-
-  // Notifications History
   notifications: [defaultWelcomeNotif],
 };
 
-function buildLiveWaits(stands) {
-  const w = {};
-  stands.forEach(s => { w[s.id] = s.baseWait + Math.round((Math.random() - 0.5) * 4); });
-  return w;
-}
-
-function buildDensities(sections) {
-  const d = {};
-  sections.forEach(s => { d[s.id] = addNoise(s.baseDensity, 0.15); });
-  return d;
-}
-
-function buildGateCongestion(gates) {
-  const g = {};
-  gates.forEach(gate => { g[gate.id] = addNoise(gate.baseCongestion, 0.2); });
-  return g;
-}
-
-function buildPoiWaits(pois) {
-  const w = {};
-  pois.forEach(p => {
-    if (p.baseWait > 0) {
-      w[p.id] = Math.max(1, p.baseWait + Math.round((Math.random() - 0.5) * 3));
-    } else {
-      w[p.id] = 0;
-    }
-  });
-  return w;
-}
-
 function generateAlerts(state) {
-  const sport = state.selectedSport;
-  const event = EVENTS_BY_SPORT[sport];
   const alerts = [];
 
-  // Crowd-based alert
-  const highDensitySections = Object.entries(state.crowdDensities)
-    .filter(([, d]) => d > 0.85)
-    .map(([id]) => id);
-
-  if (highDensitySections.length > 0) {
+  const highDensityZones = (state.crowdZones || []).filter(z => z.density > 0.85);
+  if (highDensityZones.length > 0) {
     alerts.push({
-      id: 'crowd-1',
-      type: 'warning',
-      icon: '👥',
-      title: `${highDensitySections[0]} is very crowded`,
-      desc: 'Consider using alternate routes. Sections B1 & D1 are clear.',
+      id: 'crowd-1', type: 'warning', icon: '👥',
+      title: `${highDensityZones[0].zoneName} is very crowded`,
+      desc: 'Consider using alternate routes to lower-density sections.',
     });
   }
 
-  // Food alert based on wait times
-  const minWaitStand = Object.entries(state.liveWaitTimes)
-    .sort(([, a], [, b]) => a - b)[0];
-  if (minWaitStand) {
-    const stand = STANDS.find(s => s.id === minWaitStand[0]);
-    if (stand) {
-      alerts.push({
-        id: 'food-1',
-        type: 'success',
-        icon: '🍽️',
-        title: `Shortest queue at ${stand.name}`,
-        desc: `Only ${minWaitStand[1]} min wait — Level 1 Block B`,
-      });
-    }
-  }
-
-  // Period-based alert
-  const periodIdx = state.scoreIdx;
-  if (periodIdx > 0 && event) {
+  const sortedQueues = [...(state.queueStatuses || [])].sort((a, b) => a.waitMinutes - b.waitMinutes);
+  if (sortedQueues.length > 0 && sortedQueues[0].vendor) {
     alerts.push({
-      id: 'event-1',
-      type: 'info',
-      icon: '📢',
-      title: sport === 'cricket' ? 'Strategic timeout coming up' : 'Great time for a break!',
-      desc: 'Order food now to beat the halftime rush',
+      id: 'food-1', type: 'success', icon: '🍽️',
+      title: `Shortest queue at ${sortedQueues[0].vendor.name}`,
+      desc: `Only ${sortedQueues[0].waitMinutes} min wait`,
     });
   }
 
-  // Gate alert
-  const highGate = Object.entries(state.gateCongestion)
-    .find(([, v]) => v > 0.8);
+  const highGate = (state.gates || []).find(g => g.congestion > 0.8);
   if (highGate) {
-    const gate = GATES.find(g => g.id === highGate[0]);
-    if (gate) {
-      alerts.push({
-        id: 'gate-1',
-        type: 'accent',
-        icon: '🚪',
-        title: `${gate.name} congestion`,
-        desc: `Use ${gate.direction} alternate — save 8 min`,
-      });
-    }
+    alerts.push({
+      id: 'gate-1', type: 'accent', icon: '🚪',
+      title: `${highGate.name} congestion`,
+      desc: `${highGate.direction} — try an alternate gate`,
+    });
   }
 
-  // Parking reminder
+  if (state.event) {
+    alerts.push({
+      id: 'event-1', type: 'info', icon: '📢',
+      title: state.event.status === 'live' ? 'Match is LIVE!' : 'Event update',
+      desc: `${state.event.title} at ${state.venue?.name || 'the stadium'}`,
+    });
+  }
+
   alerts.push({
-    id: 'park-1',
-    type: 'info',
-    icon: '🚗',
+    id: 'park-1', type: 'info', icon: '🚗',
     title: 'Plan your exit',
-    desc: 'Parking lots P1 fills fast. Leave 5 min early for smooth exit.',
+    desc: 'Parking lots fill fast. Leave 5 min early for a smooth exit.',
   });
 
   return alerts;
@@ -174,12 +101,48 @@ function reducer(state, action) {
       return {
         ...state,
         onboarded: true,
-        selectedSport: action.sport,
-        liveWaitTimes: buildLiveWaits(STANDS),
-        crowdDensities: buildDensities(SECTIONS),
-        gateCongestion: buildGateCongestion(GATES),
-        poiWaits: buildPoiWaits(POIS),
+        selectedSport: action.sport || state.selectedSport,
+        user: action.user || state.user,
+        event: action.event || state.event,
+        venue: action.venue || state.venue,
+        ticket: action.ticket || state.ticket,
+        crowdZones: action.crowdZones || state.crowdZones,
+        gates: action.gates || state.gates,
+        vendors: action.vendors || state.vendors,
+        queueStatuses: action.queueStatuses || state.queueStatuses,
+        alerts: generateAlerts({
+          ...state,
+          crowdZones: action.crowdZones || state.crowdZones,
+          gates: action.gates || state.gates,
+          queueStatuses: action.queueStatuses || state.queueStatuses,
+          event: action.event || state.event,
+          venue: action.venue || state.venue,
+        }),
       };
+
+    case 'SET_LIVE_DATA': {
+      const newState = {
+        ...state,
+        event: action.event ?? state.event,
+        venue: action.venue ?? state.venue,
+        ticket: action.ticket ?? state.ticket,
+        crowdZones: action.crowdZones ?? state.crowdZones,
+        gates: action.gates ?? state.gates,
+        vendors: action.vendors ?? state.vendors,
+        queueStatuses: action.queueStatuses ?? state.queueStatuses,
+      };
+      return { ...newState, alerts: generateAlerts(newState) };
+    }
+
+    case 'REFRESH_CROWD': {
+      const newState = {
+        ...state,
+        crowdZones: action.crowdZones ?? state.crowdZones,
+        gates: action.gates ?? state.gates,
+        queueStatuses: action.queueStatuses ?? state.queueStatuses,
+      };
+      return { ...newState, alerts: generateAlerts(newState) };
+    }
 
     case 'SET_PAGE':
       return { ...state, activePage: action.page };
@@ -187,80 +150,10 @@ function reducer(state, action) {
     case 'SET_POI_FILTER':
       return { ...state, poiFilter: action.filter };
 
-    case 'TICK_LIVE_DATA': {
-      const newWaits = {};
-      STANDS.forEach(s => {
-        const cur = state.liveWaitTimes[s.id] || s.baseWait;
-        newWaits[s.id] = Math.max(1, Math.min(30, cur + Math.round((Math.random() - 0.5) * 2)));
-      });
-      const newDensities = {};
-      SECTIONS.forEach(s => {
-        const cur = state.crowdDensities[s.id] || s.baseDensity;
-        newDensities[s.id] = addNoise(cur, 0.06);
-      });
-      const newGates = {};
-      GATES.forEach(g => {
-        const cur = state.gateCongestion[g.id] || g.baseCongestion;
-        newGates[g.id] = addNoise(cur, 0.08);
-      });
-      const newPoiWaits = {};
-      POIS.forEach(p => {
-        if (p.baseWait > 0) {
-          const cur = state.poiWaits[p.id] || p.baseWait;
-          newPoiWaits[p.id] = Math.max(1, Math.min(20, cur + Math.round((Math.random() - 0.5) * 2)));
-        } else {
-          newPoiWaits[p.id] = 0;
-        }
-      });
-      const newState = {
-        ...state,
-        liveWaitTimes: newWaits,
-        crowdDensities: newDensities,
-        gateCongestion: newGates,
-        poiWaits: newPoiWaits,
-      };
-      return { ...newState, alerts: generateAlerts(newState) };
-    }
-
-    case 'ADVANCE_SCORE': {
-      const nextIdx = Math.min(
-        state.scoreIdx + 1,
-        (EVENTS_BY_SPORT[state.selectedSport]?.scores?.home?.length ?? 1) - 1
-      );
-      const event = EVENTS_BY_SPORT[state.selectedSport];
-      
-      let scoreNotif = null;
-      if (event && nextIdx !== state.scoreIdx) {
-        const homeScore = event.scores.home[nextIdx];
-        const awayScore = event.scores.away[nextIdx];
-        const period = event.periods[nextIdx];
-        scoreNotif = {
-          id: `notif-score-${Date.now()}`,
-          title: `Match Update: ${event.home.shortName} vs ${event.away.shortName}`,
-          desc: `Score advanced to ${event.home.shortName} ${homeScore} - ${awayScore} ${event.away.shortName} (${event.periodLabel}: ${period})`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'info',
-          icon: '⚡',
-          read: false,
-        };
-      }
-
-      return {
-        ...state,
-        scoreIdx: nextIdx,
-        notifications: scoreNotif ? [scoreNotif, ...(state.notifications || [])] : (state.notifications || [])
-      };
-    }
-
     case 'ADD_TO_CART': {
       const exists = state.cart.find(i => i.id === action.item.id);
       if (exists) {
-        return {
-          ...state,
-          cart: state.cart.map(i =>
-            i.id === action.item.id ? { ...i, qty: i.qty + 1 } : i
-          ),
-        };
+        return { ...state, cart: state.cart.map(i => i.id === action.item.id ? { ...i, qty: i.qty + 1 } : i) };
       }
       return { ...state, cart: [...state.cart, { ...action.item, qty: 1 }] };
     }
@@ -268,36 +161,28 @@ function reducer(state, action) {
     case 'REMOVE_FROM_CART':
       return {
         ...state,
-        cart: state.cart
-          .map(i => i.id === action.id ? { ...i, qty: i.qty - 1 } : i)
-          .filter(i => i.qty > 0),
+        cart: state.cart.map(i => i.id === action.id ? { ...i, qty: i.qty - 1 } : i).filter(i => i.qty > 0),
       };
 
     case 'PLACE_ORDER': {
       const order = {
-        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: action.orderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
         items: [...state.cart],
         total: state.cart.reduce((s, i) => s + i.price * i.qty, 0),
-        status: 0, // 0=received, 1=prep, 2=ready, 3=delivered
+        status: 0,
         placedAt: new Date().toISOString(),
       };
-
       const orderNotif = {
         id: `notif-order-${Date.now()}`,
         title: 'Order Placed!',
-        desc: `Your food order ${order.id} has been received and is now preparing.`,
+        desc: `Your order ${order.id} has been received.`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'success',
-        icon: '🍔',
-        read: false,
+        type: 'success', icon: '🍔', read: false,
       };
-
-      return { 
-        ...state, 
-        cart: [], 
-        activeOrder: order, 
+      return {
+        ...state, cart: [], activeOrder: order,
         orders: [order, ...state.orders],
-        notifications: [orderNotif, ...(state.notifications || [])]
+        notifications: [orderNotif, ...(state.notifications || [])],
       };
     }
 
@@ -305,114 +190,71 @@ function reducer(state, action) {
       if (!state.activeOrder) return state;
       const newStatus = Math.min(3, state.activeOrder.status + 1);
       const updated = { ...state.activeOrder, status: newStatus };
-
       const statusLabels = ['Received', 'Preparing', 'Ready for Pickup', 'Delivered'];
       const statusIcons = ['🛒', '👨‍🍳', '📦', '✅'];
       const statusDescs = [
         `Order ${updated.id} has been received.`,
         `Chef is preparing your order ${updated.id}.`,
         `Order ${updated.id} is ready at the counter!`,
-        `Order ${updated.id} has been successfully delivered to your seat.`
+        `Order ${updated.id} has been delivered.`,
       ];
-
       const statusNotif = {
         id: `notif-order-status-${Date.now()}`,
         title: `Order Status: ${statusLabels[newStatus]}`,
         desc: statusDescs[newStatus],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: newStatus === 3 ? 'success' : newStatus === 2 ? 'accent' : 'info',
-        icon: statusIcons[newStatus],
-        read: false,
+        icon: statusIcons[newStatus], read: false,
       };
-
       return {
-        ...state,
-        activeOrder: updated,
+        ...state, activeOrder: updated,
         orders: state.orders.map(o => o.id === updated.id ? updated : o),
-        notifications: [statusNotif, ...(state.notifications || [])]
+        notifications: [statusNotif, ...(state.notifications || [])],
       };
     }
 
     case 'ADD_CHAT_MESSAGE':
       return { ...state, chatMessages: [...state.chatMessages, action.message] };
 
-    case 'SET_SPORT':
-      return { 
-        ...state, 
-        selectedSport: action.sport, 
-        onboarded: false, // Switching sports requires entering ticket details again!
-        scoreIdx: 2,
-        notifications: [
-          {
-            id: `notif-switch-${Date.now()}`,
-            title: `Sport Switched to ${SPORTS[action.sport]?.name || action.sport}`,
-            desc: `Complete your ticket verification to enter the match portal.`,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: 'info',
-            icon: '🔄',
-            read: false,
-          },
-          ...(state.notifications || [])
-        ]
-      };
-
     case 'SUBMIT_PREDICTION': {
       const predNotif = {
         id: `notif-prediction-${Date.now()}`,
         title: 'Prediction Locked!',
-        desc: `You predicted ${action.team} will score next! Reward coupon earned: ${action.coupon} (${action.reward}).`,
+        desc: `You predicted ${action.team} will score next! Reward coupon: ${action.coupon} (${action.reward}).`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'success',
-        icon: '🎯',
-        read: false,
+        type: 'success', icon: '🎯', read: false,
       };
-      return {
-        ...state,
-        notifications: [predNotif, ...(state.notifications || [])]
-      };
+      return { ...state, notifications: [predNotif, ...(state.notifications || [])] };
     }
 
     case 'ADD_NOTIFICATION': {
       const newNotif = {
         id: `notif-custom-${Date.now()}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: false,
-        ...action.notification
+        read: false, ...action.notification,
       };
-      return {
-        ...state,
-        notifications: [newNotif, ...(state.notifications || [])]
-      };
+      return { ...state, notifications: [newNotif, ...(state.notifications || [])] };
     }
 
     case 'CLEAR_NOTIFICATIONS':
       return { ...state, notifications: [] };
 
     case 'MARK_NOTIFICATIONS_READ':
-      return {
-        ...state,
-        notifications: (state.notifications || []).map(n => ({ ...n, read: true }))
-      };
+      return { ...state, notifications: (state.notifications || []).map(n => ({ ...n, read: true })) };
 
     case 'RESET_PORTAL':
-      // Clear localStorage explicitly
-      localStorage.removeItem('venueiq_state');
+      return { ...initialState };
+
+    case 'SET_SPORT':
       return {
-        onboarded: false,
-        selectedSport: null,
-        activePage: 'home',
-        poiFilter: 'all',
-        scoreIdx: 2,
-        liveWaitTimes: {},
-        crowdDensities: {},
-        gateCongestion: {},
-        poiWaits: {},
-        cart: [],
-        orders: [],
-        activeOrder: null,
-        alerts: [],
-        chatMessages: [],
-        notifications: [defaultWelcomeNotif],
+        ...state, selectedSport: action.sport, onboarded: false,
+        notifications: [{
+          id: `notif-switch-${Date.now()}`,
+          title: `Sport switched`,
+          desc: 'Complete your ticket verification to enter the match portal.',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'info', icon: '🔄', read: false,
+        }, ...(state.notifications || [])],
       };
 
     default:
@@ -424,43 +266,112 @@ export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const orderTimerRef = useRef(null);
 
-  // Live data tick every 5 seconds
+  // ─── Refresh crowd data every 15 seconds while in portal ──
   useEffect(() => {
-    if (!state.onboarded) return;
-    const interval = setInterval(() => {
-      dispatch({ type: 'TICK_LIVE_DATA' });
-    }, 5000);
+    if (!state.onboarded || !state.venue?.id) return;
+    const interval = setInterval(async () => {
+      try {
+        const crowdRes = await getCrowdData(state.venue.id);
+        const queueRes = state.event?.id ? await getQueueStatus(state.event.id) : { data: [] };
+        dispatch({
+          type: 'REFRESH_CROWD',
+          crowdZones: crowdRes.data?.zones || [],
+          gates: crowdRes.data?.gates || [],
+          queueStatuses: queueRes.data || [],
+        });
+      } catch { /* silent */ }
+    }, 15000);
     return () => clearInterval(interval);
-  }, [state.onboarded]);
+  }, [state.onboarded, state.venue?.id, state.event?.id]);
 
-  // Advance score periodically (every 20 seconds)
-  useEffect(() => {
-    if (!state.onboarded) return;
-    const interval = setInterval(() => {
-      dispatch({ type: 'ADVANCE_SCORE' });
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [state.onboarded]);
-
-  // Auto-advance order status
+  // ─── Auto-advance order status ───────────────────────────
   useEffect(() => {
     if (state.activeOrder && state.activeOrder.status < 3) {
-      orderTimerRef.current = setTimeout(() => {
-        dispatch({ type: 'ADVANCE_ORDER' });
-      }, 8000);
+      orderTimerRef.current = setTimeout(() => dispatch({ type: 'ADVANCE_ORDER' }), 8000);
     }
     return () => clearTimeout(orderTimerRef.current);
   }, [state.activeOrder?.status]);
 
-  // Save state to localStorage on every change
-  useEffect(() => {
-    localStorage.setItem('venueiq_state', JSON.stringify(state));
-  }, [state]);
+  // ─── Onboarding action: register/login + verify ticket + fetch all data ──
+  const completeOnboarding = async ({ bookingRef, name, email, phone, sport }) => {
+    // 1. Register or login the user
+    let user = null;
+    try {
+      const regRes = await apiRegister(email, 'venueiq2025', name, phone);
+      user = regRes.data?.user;
+    } catch (err) {
+      // Already registered — login instead
+      try {
+        const loginRes = await apiLogin(email, 'venueiq2025');
+        user = loginRes.data?.user;
+      } catch (loginErr) {
+        console.error('Auth failed:', loginErr);
+        throw new Error('Authentication failed. Please try again.');
+      }
+    }
+
+    // 2. Verify ticket
+    let ticket = null;
+    try {
+      const ticketRes = await verifyTicket(bookingRef);
+      ticket = ticketRes.data || null;
+    } catch {
+      // Ticket not found — continue without (guest mode)
+    }
+
+    // 3. Fetch events
+    let event = null;
+    try {
+      const eventsRes = await getEvents(sport, 'live');
+      event = eventsRes.data?.[0] || null;
+      if (!event) {
+        const allEvents = await getEvents(sport);
+        event = allEvents.data?.[0] || null;
+      }
+    } catch { /* no events */ }
+
+    // 4. Fetch venue + crowd data
+    const venue = event?.venue || ticket?.event?.venue || null;
+    let crowdZones = [], gates = [];
+    if (venue?.id) {
+      try {
+        const crowdRes = await getCrowdData(venue.id);
+        crowdZones = crowdRes.data?.zones || [];
+        gates = crowdRes.data?.gates || [];
+      } catch { /* fallback */ }
+    }
+
+    // 5. Fetch food vendors + queues
+    let vendors = [], queueStatuses = [];
+    try {
+      const vendorsRes = await getVendors(venue?.id);
+      vendors = vendorsRes.data || [];
+    } catch { /* fallback */ }
+    if (event?.id) {
+      try {
+        const queueRes = await getQueueStatus(event.id);
+        queueStatuses = queueRes.data || [];
+      } catch { /* fallback */ }
+    }
+
+    // 6. Dispatch everything at once
+    dispatch({
+      type: 'COMPLETE_ONBOARDING',
+      sport, user, event, venue, ticket,
+      crowdZones, gates, vendors, queueStatuses,
+    });
+
+    return { user, event, ticket, venue };
+  };
+
+  const logout = async () => {
+    try { await apiLogout(); } catch { /* ignore */ }
+    dispatch({ type: 'RESET_PORTAL' });
+  };
 
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ state, dispatch, completeOnboarding, logout }}>
       {children}
     </AppContext.Provider>
   );
 }
-

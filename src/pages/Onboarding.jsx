@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { SPORTS, detectSportFromRef, EVENTS_BY_SPORT } from '../data/mockEvent';
 import { useApp } from '../context/useApp';
+import { verifyTicket } from '../api/tickets';
 
 const ALL_SPORTS = Object.values(SPORTS);
 const FLOATING_ICONS = ['🏏', '⚽', '🏀', '🏑', '🎾', '🤼', '🏟️', '🎯', '🏆', '🎽'];
@@ -29,6 +30,7 @@ export default function Onboarding() {
   // Start on step 1 directly if sport is pre-selected (via sport switching inside portal)
   const [step, setStep] = useState(state.selectedSport ? 1 : 0);
   const [ticketData, setTicketData] = useState({ bookingRef: '', name: '', email: '', phone: '' });
+  const [authError, setAuthError] = useState('');
   const [errors, setErrors] = useState({});
   const [isVerifying, setIsVerifying] = useState(false);
   const [detectingMsg, setDetectingMsg] = useState('');
@@ -37,24 +39,7 @@ export default function Onboarding() {
   const [selectedSport, setSelectedSport] = useState(state.selectedSport || null);
   const firstInputRef = useRef(null);
 
-  const getDemoTicket = (sportId) => {
-    const demoRefs = {
-      cricket: 'IPL-2025-MI04',
-      football: 'FBL-2025-ISL',
-      basketball: 'BBL-2025-01',
-      hockey: 'HOC-FIH-25',
-      tennis: 'TEN-ATP-25',
-      kabaddi: 'KBD-PKL-25',
-    };
-    return {
-      bookingRef: demoRefs[sportId] || 'IPL-2025-MI04',
-      name: 'Ruchit Doshi',
-      email: 'ruchit@gmail.com',
-      phone: '9876543210',
-    };
-  };
-
-  const DEMO_TICKET = getDemoTicket(state.selectedSport || detectedSport || 'cricket');
+  const { completeOnboarding } = useApp();
 
   useEffect(() => {
     if (step === 1) setTimeout(() => firstInputRef.current?.focus(), 300);
@@ -72,10 +57,7 @@ export default function Onboarding() {
     }
   }, [ticketData.bookingRef]);
 
-  const handleDemoFill = () => {
-    setTicketData(DEMO_TICKET);
-    setErrors({});
-  };
+
 
   const validateTicket = () => {
     const errs = {};
@@ -89,36 +71,60 @@ export default function Onboarding() {
   const handleVerify = async () => {
     if (!validateTicket()) return;
     setIsVerifying(true);
+    setAuthError('');
 
     const sport = detectSportFromRef(ticketData.bookingRef);
     const event = sport ? EVENTS_BY_SPORT[sport] : null;
 
     const steps = [
       'Reading ticket barcode...',
-      event ? `Detected: ${SPORTS[sport]?.icon} ${event.matchTitle}` : 'Identifying match...',
-      `Locating venue: ${event?.venue ?? 'Stadium'}...`,
-      `Seat ${event?.section ?? 'P'}${event?.row ?? '14'} · ${event?.city ?? 'India'} confirmed!`,
+      event ? `Detected: ${SPORTS[sport]?.icon} ${event.matchTitle}` : 'Verifying booking...',
+      'Authenticating your identity...',
       'Loading live match data...',
+      'Preparing your experience...',
     ];
 
     for (let i = 0; i < steps.length; i++) {
       setDetectingMsg(steps[i]);
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    try {
+      const finalSport = sport || 'cricket';
+      await completeOnboarding({
+        bookingRef: ticketData.bookingRef,
+        name: ticketData.name,
+        email: ticketData.email,
+        phone: ticketData.phone,
+        sport: finalSport,
+      });
+    } catch (err) {
+      setAuthError(err.message || 'Verification failed. Please try again.');
+      setIsVerifying(false);
+      setDetectingMsg('');
+      return;
     }
 
     setIsVerifying(false);
     setDetectingMsg('');
-    setDetectedSport(sport);
-    setSelectedSport(sport); // auto-select detected sport
-
-    // Bypasses confirmation screen and takes ticket holders directly to portal
-    const finalSport = sport || 'cricket';
-    dispatch({ type: 'COMPLETE_ONBOARDING', sport: finalSport });
   };
 
-  const handleEnter = () => {
+  const handleEnter = async () => {
     const finalSport = selectedSport || detectedSport || 'cricket';
-    dispatch({ type: 'COMPLETE_ONBOARDING', sport: finalSport });
+    setIsVerifying(true);
+    setAuthError('');
+    try {
+      await completeOnboarding({
+        bookingRef: ticketData.bookingRef || 'GUEST',
+        name: ticketData.name || 'Guest User',
+        email: ticketData.email || `guest${Date.now()}@venueiq.com`,
+        phone: ticketData.phone,
+        sport: finalSport,
+      });
+    } catch (err) {
+      setAuthError(err.message || 'Failed to enter. Please try again.');
+    }
+    setIsVerifying(false);
   };
 
   // ─── STEP 0: HERO ───────────────────────────────────────────────
@@ -221,9 +227,6 @@ export default function Onboarding() {
               We read your booking ref to find your game & venue
             </div>
           </div>
-          <button className="demo-fill-btn" onClick={handleDemoFill}>
-            ✨ Demo ticket
-          </button>
         </div>
 
         {/* Live detection preview */}
