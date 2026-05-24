@@ -158,8 +158,12 @@ export default function GeminiChat() {
       });
 
       const data = await response.json();
-      const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sorry, I couldn\'t get an answer right now. Please try again!';
+      
+      if (!response.ok || !data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error(data?.error?.message || 'Gemini API failed or returned empty payload');
+      }
 
+      const aiText = data.candidates[0].content.parts[0].text;
       const aiMsg = { role: 'assistant', content: aiText, id: Date.now() + 1 };
       dispatch({ type: 'ADD_CHAT_MESSAGE', message: aiMsg });
     } catch (err) {
