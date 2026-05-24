@@ -218,9 +218,47 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
         const sec = SECTIONS.find(s => s.id === userSection);
         if (!gatePos || !sec) return null;
         
+        // Concourse walk parameters
+        const cx = 215;
+        const cy = 170;
+        const rx = 180; // Walks along outer track corridor
+        const ry = 142; // Walkway height radius
+
+        // Gate angle
+        let gateAngle = Math.PI / 2; // Gate D
+        if (recommendedGateLetter === 'A') gateAngle = -Math.PI / 2;
+        else if (recommendedGateLetter === 'B') gateAngle = 0;
+        else if (recommendedGateLetter === 'C') gateAngle = Math.PI;
+
+        // Target angle based on section center
+        const targetX = sec.x + sec.w / 2;
+        const targetY = sec.y + sec.h / 2;
+        const targetAngle = Math.atan2(targetY - cy, targetX - cx);
+
+        // Shortest angular distance
+        let diff = targetAngle - gateAngle;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+
+        // Generate points along concourse loop
+        const points = [];
+        points.push(`${gatePos.x},${gatePos.y}`);
+
+        const steps = 18;
+        for (let i = 0; i <= steps; i++) {
+          const angle = gateAngle + (diff * i) / steps;
+          const px = cx + rx * Math.cos(angle);
+          const py = cy + ry * Math.sin(angle);
+          points.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+        }
+
+        // Enter section from concourse
+        points.push(`${targetX.toFixed(1)},${targetY.toFixed(1)}`);
+        const dAttr = `M ` + points.join(' L ');
+
         return (
           <path
-            d={`M ${gatePos.x} ${gatePos.y} Q 215 170 ${sec.x + sec.w / 2} ${sec.y + sec.h / 2}`}
+            d={dAttr}
             fill="none"
             stroke="#2563EB"
             strokeWidth={3}
