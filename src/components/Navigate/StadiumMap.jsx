@@ -200,8 +200,9 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
                 fill="#2563EB"
                 stroke="white"
                 strokeWidth={1.5}
-                style={{ animation: 'live-pulse 1.5s infinite' }}
-              />
+              >
+                <animate attributeName="r" values="4;6.5;4" dur="1.5s" repeatCount="indefinite" />
+              </circle>
             )}
           </g>
         );
@@ -285,12 +286,14 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
           <g key={gate.id}>
             {isRecommended && (
               <circle 
-                cx={gate.x} cy={gate.y} r={18} 
+                cx={gate.x} cy={gate.y} r={12} 
                 fill="none" 
                 stroke="#2563EB" 
                 strokeWidth={1.5}
-                style={{ animation: 'live-pulse 1.5s infinite' }}
-              />
+              >
+                <animate attributeName="r" values="12;22;12" dur="1.5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="1.5s" repeatCount="indefinite" />
+              </circle>
             )}
             <circle cx={gate.x} cy={gate.y} r={12} fill={isRecommended ? '#10B981' : '#2563EB'} stroke="white" strokeWidth={2} />
             <text x={gate.x} y={gate.y + 1} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={8} fontWeight="800">
@@ -376,12 +379,14 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
           <g key={poi.id} style={{ cursor: 'pointer' }} onClick={() => onSelectPoi(poi.id === selectedPoiId ? null : poi.id)}>
             {isSelected && (
               <circle
-                cx={poi.x} cy={poi.y} r={22}
+                cx={poi.x} cy={poi.y} r={14}
                 fill="none"
                 stroke="#EF4444"
                 strokeWidth={2}
-                style={{ animation: 'live-pulse 1.5s infinite' }}
-              />
+              >
+                <animate attributeName="r" values="14;24;14" dur="1.5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="1.5s" repeatCount="indefinite" />
+              </circle>
             )}
             <circle 
               cx={poi.x} cy={poi.y} r={14} 
@@ -396,11 +401,7 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
         );
       })}
 
-      {/* You are here label */}
-      <rect x={148} y={295} width={134} height={22} rx={11} fill="rgba(37,99,235,0.85)" />
-      <text x={215} y={306} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={9} fontWeight="700">
-        📍 YOUR SEAT — Section {userSection}
-      </text>
+      {/* Label moved to floating HTML overlay */}
     </svg>
   );
 }
@@ -457,6 +458,29 @@ export default function StadiumMap() {
           selectedPoiId={selectedPoiId}
           onSelectPoi={setSelectedPoiId}
         />
+        
+        {/* Floating Your Seat Badge */}
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '12px',
+          background: 'rgba(37, 99, 235, 0.9)',
+          color: 'white',
+          padding: '6px 12px',
+          borderRadius: '99px',
+          fontSize: '0.75rem',
+          fontWeight: '700',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: 'var(--shadow-sm)',
+          zIndex: 10,
+          backdropFilter: 'blur(4px)',
+          pointerEvents: 'none',
+        }}>
+          <span>📍</span> YOUR SEAT — Section {userSection}
+        </div>
+
         <div className="map-controls">
           <button className="map-ctrl-btn" title="Zoom in">＋</button>
           <button className="map-ctrl-btn" title="Zoom out">－</button>

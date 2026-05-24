@@ -48,8 +48,8 @@ export default function Onboarding() {
     };
     return {
       bookingRef: demoRefs[sportId] || 'IPL-2025-MI04',
-      name: 'Ruchit Shah',
-      email: 'ruchit@email.com',
+      name: 'Ruchit Doshi',
+      email: 'ruchit@gmail.com',
       phone: '9876543210',
     };
   };
@@ -110,7 +110,7 @@ export default function Onboarding() {
     setDetectingMsg('');
     setDetectedSport(sport);
     setSelectedSport(sport); // auto-select detected sport
-    
+
     // Bypasses confirmation screen and takes ticket holders directly to portal
     const finalSport = sport || 'cricket';
     dispatch({ type: 'COMPLETE_ONBOARDING', sport: finalSport });

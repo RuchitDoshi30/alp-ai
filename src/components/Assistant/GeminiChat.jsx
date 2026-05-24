@@ -186,6 +186,136 @@ function getChatActions(text) {
   return actions;
 }
 
+function renderMarkdown(text) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const renderedElements = [];
+  let currentList = [];
+
+  const parseInline = (lineText) => {
+    let parts = [];
+    const codeRegex = /`([^`]+)`/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeRegex.exec(lineText)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(lineText.substring(lastIndex, match.index));
+      }
+      parts.push(<code key={`code-${match.index}`} style={{ background: 'var(--surface-3)', padding: '2px 4px', borderRadius: '4px', fontSize: '0.9em', fontFamily: 'monospace' }}>{match[1]}</code>);
+      lastIndex = codeRegex.lastIndex;
+    }
+    if (lastIndex < lineText.length) {
+      parts.push(lineText.substring(lastIndex));
+    }
+
+    const processBold = (items) => {
+      const result = [];
+      items.forEach((item, itemIdx) => {
+        if (typeof item !== 'string') {
+          result.push(item);
+          return;
+        }
+
+        const boldRegex = /\*\*([^*]+)\*\*/g;
+        let innerLastIndex = 0;
+        let innerMatch;
+        const innerParts = [];
+
+        while ((innerMatch = boldRegex.exec(item)) !== null) {
+          if (innerMatch.index > innerLastIndex) {
+            innerParts.push(item.substring(innerLastIndex, innerMatch.index));
+          }
+          innerParts.push(<strong key={`bold-${itemIdx}-${innerMatch.index}`} style={{ fontWeight: '700' }}>{innerMatch[1]}</strong>);
+          innerLastIndex = boldRegex.lastIndex;
+        }
+
+        if (innerLastIndex < item.length) {
+          innerParts.push(item.substring(innerLastIndex));
+        }
+        result.push(...innerParts);
+      });
+      return result;
+    };
+
+    parts = processBold(parts);
+
+    const processItalic = (items) => {
+      const result = [];
+      items.forEach((item, itemIdx) => {
+        if (typeof item !== 'string') {
+          result.push(item);
+          return;
+        }
+
+        const italicRegex = /\*([^*]+)\*/g;
+        let innerLastIndex = 0;
+        let innerMatch;
+        const innerParts = [];
+
+        while ((innerMatch = italicRegex.exec(item)) !== null) {
+          if (innerMatch.index > innerLastIndex) {
+            innerParts.push(item.substring(innerLastIndex, innerMatch.index));
+          }
+          innerParts.push(<em key={`em-${itemIdx}-${innerMatch.index}`} style={{ fontStyle: 'italic' }}>{innerMatch[1]}</em>);
+          innerLastIndex = italicRegex.lastIndex;
+        }
+
+        if (innerLastIndex < item.length) {
+          innerParts.push(item.substring(innerLastIndex));
+        }
+        result.push(...innerParts);
+      });
+      return result;
+    };
+
+    return processItalic(parts);
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    const bulletMatch = trimmed.match(/^([•\*\-])\s+(.*)/);
+    if (bulletMatch) {
+      const content = bulletMatch[2];
+      currentList.push(
+        <li key={`li-${index}`} style={{ marginBottom: '4px', listStyleType: 'disc' }}>
+          {parseInline(content)}
+        </li>
+      );
+    } else {
+      if (currentList.length > 0) {
+        renderedElements.push(
+          <ul key={`ul-${index}`} style={{ margin: '6px 0', paddingLeft: '20px', listStylePosition: 'outside' }}>
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+      }
+
+      if (trimmed === '') {
+        renderedElements.push(<div key={`br-${index}`} style={{ height: '8px' }} />);
+      } else {
+        renderedElements.push(
+          <p key={`p-${index}`} style={{ margin: '4px 0', lineHeight: '1.5' }}>
+            {parseInline(line)}
+          </p>
+        );
+      }
+    }
+  });
+
+  if (currentList.length > 0) {
+    renderedElements.push(
+      <ul key="ul-final" style={{ margin: '6px 0', paddingLeft: '20px', listStylePosition: 'outside' }}>
+        {currentList}
+      </ul>
+    );
+  }
+
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>{renderedElements}</div>;
+}
+
 export default function GeminiChat() {
   const { state, dispatch } = useApp();
   const [input, setInput] = useState('');
@@ -296,8 +426,8 @@ export default function GeminiChat() {
               {isAi && (
                 <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>🤖 VenueIQ AI</div>
               )}
-              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {msg.content}
+              <div style={isAi ? { wordBreak: 'break-word' } : { whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {isAi ? renderMarkdown(msg.content) : msg.content}
               </div>
 
               {isAi && actions.length > 0 && (
