@@ -1,7 +1,7 @@
 import { useApp } from '../../context/useApp';
 
 export default function SmartAlerts() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const alerts = state.alerts;
 
   if (!alerts || alerts.length === 0) {
@@ -25,7 +25,22 @@ export default function SmartAlerts() {
       </div>
       <div className="alerts-scroll">
         {alerts.map(alert => (
-          <div key={alert.id} className={`alert-card ${alert.type}`}>
+          <div
+            key={alert.id}
+            className={`alert-card ${alert.type}`}
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              let filter = 'all';
+              if (alert.id.includes('food')) filter = 'food';
+              else if (alert.id.includes('gate')) filter = 'exit';
+              else if (alert.id.includes('park')) filter = 'parking';
+              else if (alert.id.includes('event')) filter = 'restroom';
+              else if (alert.id.includes('crowd')) filter = 'all';
+
+              dispatch({ type: 'SET_POI_FILTER', filter });
+              dispatch({ type: 'SET_PAGE', page: 'navigate' });
+            }}
+          >
             <div className="alert-icon">{alert.icon}</div>
             <div className="alert-content">
               <div className="alert-title">{alert.title}</div>

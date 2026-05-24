@@ -1,18 +1,18 @@
 // Crowd & venue data simulation
 
 export const SECTIONS = [
-  { id: 'A1', label: 'A1', x: 140, y: 60, w: 60, h: 40, baseDensity: 0.85 },
-  { id: 'A2', label: 'A2', x: 230, y: 60, w: 60, h: 40, baseDensity: 0.90 },
-  { id: 'B1', label: 'B1', x: 55, y: 120, w: 55, h: 50, baseDensity: 0.70 },
-  { id: 'B2', label: 'B2', x: 140, y: 110, w: 60, h: 55, baseDensity: 0.95 },
-  { id: 'B3', label: 'B3', x: 230, y: 110, w: 60, h: 55, baseDensity: 0.88 },
-  { id: 'B4', label: 'B4', x: 320, y: 120, w: 55, h: 50, baseDensity: 0.72 },
-  { id: 'C1', label: 'C1', x: 55, y: 195, w: 55, h: 50, baseDensity: 0.60 },
-  { id: 'C2', label: 'C2', x: 140, y: 190, w: 60, h: 50, baseDensity: 0.78 },
-  { id: 'C3', label: 'C3', x: 230, y: 190, w: 60, h: 50, baseDensity: 0.82 },
-  { id: 'C4', label: 'C4', x: 320, y: 195, w: 55, h: 50, baseDensity: 0.55 },
-  { id: 'D1', label: 'D1', x: 140, y: 260, w: 60, h: 40, baseDensity: 0.40 },
-  { id: 'D2', label: 'D2', x: 230, y: 260, w: 60, h: 40, baseDensity: 0.45 },
+  { id: 'A1', label: 'A1', x: 146, y: 44, w: 52, h: 36, baseDensity: 0.85 },
+  { id: 'A2', label: 'A2', x: 232, y: 44, w: 52, h: 36, baseDensity: 0.90 },
+  { id: 'B2', label: 'B2', x: 82, y: 78, w: 52, h: 36, baseDensity: 0.95 },
+  { id: 'B3', label: 'B3', x: 296, y: 78, w: 52, h: 36, baseDensity: 0.88 },
+  { id: 'B1', label: 'B1', x: 42, y: 124, w: 52, h: 36, baseDensity: 0.70 },
+  { id: 'B4', label: 'B4', x: 336, y: 124, w: 52, h: 36, baseDensity: 0.72 },
+  { id: 'C1', label: 'C1', x: 42, y: 180, w: 52, h: 36, baseDensity: 0.60 },
+  { id: 'C4', label: 'C4', x: 336, y: 180, w: 52, h: 36, baseDensity: 0.55 },
+  { id: 'C2', label: 'C2', x: 82, y: 226, w: 52, h: 36, baseDensity: 0.78 },
+  { id: 'C3', label: 'C3', x: 296, y: 226, w: 52, h: 36, baseDensity: 0.82 },
+  { id: 'D1', label: 'D1', x: 146, y: 260, w: 52, h: 36, baseDensity: 0.40 },
+  { id: 'D2', label: 'D2', x: 232, y: 260, w: 52, h: 36, baseDensity: 0.45 },
 ];
 
 export const GATES = [

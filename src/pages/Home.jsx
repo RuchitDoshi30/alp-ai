@@ -66,7 +66,7 @@ function MatchTimeline() {
 
 // ─── Live Stats Bar ────────────────────────────────────────────────────
 function LiveStatsBar() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const event = EVENTS_BY_SPORT[state.selectedSport];
   if (!event) return null;
 
@@ -102,7 +102,14 @@ function LiveStatsBar() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
         {/* Attendance */}
-        <div style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+        <div
+          onClick={() => {
+            dispatch({ type: 'SET_POI_FILTER', filter: 'all' });
+            dispatch({ type: 'SET_PAGE', page: 'navigate' });
+          }}
+          style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+          className="hover-card"
+        >
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🏟️ ATTENDANCE</div>
           <div style={{ fontWeight: '900', fontSize: '1.25rem', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
             {stats.attendance.toLocaleString()}
@@ -114,7 +121,14 @@ function LiveStatsBar() {
         </div>
 
         {/* Avg Wait */}
-        <div style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+        <div
+          onClick={() => {
+            dispatch({ type: 'SET_POI_FILTER', filter: 'food' });
+            dispatch({ type: 'SET_PAGE', page: 'navigate' });
+          }}
+          style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+          className="hover-card"
+        >
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>⏱️ AVG WAIT</div>
           <div style={{ fontWeight: '900', fontSize: '1.25rem', color: stats.avgWait <= 5 ? 'var(--success)' : stats.avgWait <= 12 ? 'var(--warning)' : 'var(--danger)', letterSpacing: '-0.5px' }}>
             {stats.avgWait} min
@@ -125,7 +139,14 @@ function LiveStatsBar() {
         </div>
 
         {/* Gates Open */}
-        <div style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+        <div
+          onClick={() => {
+            dispatch({ type: 'SET_POI_FILTER', filter: 'exit' });
+            dispatch({ type: 'SET_PAGE', page: 'navigate' });
+          }}
+          style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+          className="hover-card"
+        >
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🚪 GATES OPEN</div>
           <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
             {['A','B','C','D'].map(g => (
@@ -136,7 +157,13 @@ function LiveStatsBar() {
         </div>
 
         {/* Live Orders */}
-        <div style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+        <div
+          onClick={() => {
+            dispatch({ type: 'SET_PAGE', page: 'food' });
+          }}
+          style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+          className="hover-card"
+        >
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🛒 LIVE ORDERS</div>
           <div style={{ fontWeight: '900', fontSize: '1.25rem', color: 'var(--primary)', letterSpacing: '-0.5px' }}>
             {stats.ordersLive}

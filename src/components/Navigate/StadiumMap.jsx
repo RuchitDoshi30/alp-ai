@@ -10,9 +10,9 @@ function PlayingField({ sportId }) {
       return (
         <g>
           {/* Outfield ellipse */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#2E7D32" stroke="#A5D6A7" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#2E7D32" stroke="#A5D6A7" strokeWidth={2} />
           {/* 30-yard circle line */}
-          <ellipse cx={215} cy={170} rx={75} ry={55} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1} strokeDasharray="3 3" />
+          <ellipse cx={215} cy={170} rx={68} ry={48} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1} strokeDasharray="3 3" />
           {/* Cricket Pitch in center */}
           <rect x={205} y={155} width={20} height={30} fill="#E5C290" stroke="#C39B62" strokeWidth={1} rx={1} />
           <line x1={205} y1={160} x2={225} y2={160} stroke="white" strokeWidth={0.8} /> {/* Crease */}
@@ -27,24 +27,24 @@ function PlayingField({ sportId }) {
         <g>
           {/* Field turf stripes */}
           <mask id="football-mask">
-            <ellipse cx={215} cy={170} rx={120} ry={88} fill="white" />
+            <ellipse cx={215} cy={170} rx={108} ry={76} fill="white" />
           </mask>
           <g mask="url(#football-mask)">
-            <ellipse cx={215} cy={170} rx={120} ry={88} fill="#388E3C" />
+            <ellipse cx={215} cy={170} rx={108} ry={76} fill="#388E3C" />
             {/* Alternating stripes */}
             {Array.from({ length: 9 }).map((_, i) => (
               <rect
                 key={i}
-                x={215 - 120 + i * 27}
-                y={170 - 88}
-                width={13.5}
-                height={176}
+                x={215 - 108 + i * 24}
+                y={170 - 76}
+                width={12}
+                height={152}
                 fill="rgba(255,255,255,0.06)"
               />
             ))}
           </g>
           {/* Boundary outline */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="none" stroke="#71C071" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="none" stroke="#71C071" strokeWidth={2} />
           {/* Football pitch rect */}
           <rect x={135} y={115} width={160} height={110} fill="none" stroke="white" strokeWidth={1.5} />
           {/* Halfway line */}
@@ -64,7 +64,7 @@ function PlayingField({ sportId }) {
       return (
         <g>
           {/* Basketball court surrounds */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#5C4033" stroke="#4b3621" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#5C4033" stroke="#4b3621" strokeWidth={2} />
           {/* Hardwood rectangle mat */}
           <rect x={140} y={115} width={150} height={110} fill="#E0A96D" stroke="#B87D3B" strokeWidth={2} rx={2} />
           {/* Court markings */}
@@ -83,7 +83,7 @@ function PlayingField({ sportId }) {
       return (
         <g>
           {/* Electric blue turf */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#0D47A1" stroke="#1565C0" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#0D47A1" stroke="#1565C0" strokeWidth={2} />
           {/* Field boundaries */}
           <rect x={135} y={115} width={160} height={110} fill="none" stroke="white" strokeWidth={1.5} />
           {/* Center line */}
@@ -99,7 +99,7 @@ function PlayingField({ sportId }) {
       return (
         <g>
           {/* Outer green field */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#2E7D32" stroke="#1B5E20" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#2E7D32" stroke="#1B5E20" strokeWidth={2} />
           {/* Blue court surface */}
           <rect x={145} y={120} width={140} height={100} fill="#1565C0" stroke="white" strokeWidth={2} />
           {/* Singles sidelines */}
@@ -119,7 +119,7 @@ function PlayingField({ sportId }) {
       return (
         <g>
           {/* Outer mat surrounds */}
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#D84315" stroke="#BF360C" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#D84315" stroke="#BF360C" strokeWidth={2} />
           {/* Yellow/Orange court mat */}
           <rect x={145} y={125} width={140} height={90} fill="#FFB300" stroke="white" strokeWidth={2} />
           {/* Mid line */}
@@ -138,9 +138,9 @@ function PlayingField({ sportId }) {
     default:
       return (
         <g>
-          <ellipse cx={215} cy={170} rx={120} ry={88} fill="#C8E6B0" stroke="#7CB87C" strokeWidth={2} />
-          <ellipse cx={215} cy={170} rx={60} ry={44} fill="none" stroke="#7CB87C" strokeWidth={1} strokeDasharray="4 3" />
-          <line x1={215} y1={82} x2={215} y2={258} stroke="#7CB87C" strokeWidth={1} strokeDasharray="5 4" />
+          <ellipse cx={215} cy={170} rx={108} ry={76} fill="#C8E6B0" stroke="#7CB87C" strokeWidth={2} />
+          <ellipse cx={215} cy={170} rx={55} ry={38} fill="none" stroke="#7CB87C" strokeWidth={1} strokeDasharray="4 3" />
+          <line x1={215} y1={94} x2={215} y2={246} stroke="#7CB87C" strokeWidth={1} strokeDasharray="5 4" />
           <circle cx={215} cy={170} r={8} fill="none" stroke="#7CB87C" strokeWidth={1.5} />
         </g>
       );

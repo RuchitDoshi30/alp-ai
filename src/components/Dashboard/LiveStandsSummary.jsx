@@ -3,7 +3,7 @@ import { useApp } from '../../context/useApp';
 import { getWaitLevel, getWaitBarWidth } from '../../data/mockCrowd';
 
 export default function LiveStandsSummary({ onNavigateFood }) {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
 
   // Show the 3 stands with shortest wait times
   const sorted = [...STANDS]
@@ -35,7 +35,10 @@ export default function LiveStandsSummary({ onNavigateFood }) {
                 cursor: 'pointer',
                 transition: 'all var(--transition)',
               }}
-              onClick={onNavigateFood}
+              onClick={() => {
+                dispatch({ type: 'SET_POI_FILTER', filter: 'food' });
+                dispatch({ type: 'SET_PAGE', page: 'navigate' });
+              }}
             >
               <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>{stand.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
