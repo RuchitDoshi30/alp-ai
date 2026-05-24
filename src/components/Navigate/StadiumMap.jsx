@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SECTIONS, POIS, getDensityColor, POI_TYPES } from '../../data/mockCrowd';
 import { useApp } from '../../context/useApp';
 import { EVENTS_BY_SPORT } from '../../data/mockEvent';
@@ -147,7 +147,7 @@ function PlayingField({ sportId }) {
   }
 }
 
-function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLetter, sportId }) {
+function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLetter, sportId, selectedPoiId, onSelectPoi }) {
   const viewW = 430;
   const viewH = 340;
   const trackColor = '#E8A87C';
@@ -299,17 +299,96 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
         );
       })}
 
-      {/* POI icons based on active filter */}
-      {activePOI !== 'all' && POIS.filter(p => p.type === activePOI).map((poi, i) => {
-        const positions = [
-          { x: 90, y: 155 }, { x: 340, y: 155 }, { x: 215, y: 92 },
-          { x: 215, y: 248 }, { x: 130, y: 200 }, { x: 300, y: 200 },
-        ];
-        const pos = positions[i % positions.length];
+      {/* Pulsing route path to selected POI */}
+      {(() => {
+        if (!selectedPoiId) return null;
+        const selectedPoi = POIS.find(p => p.id === selectedPoiId);
+        if (!selectedPoi) return null;
+        
+        const sec = SECTIONS.find(s => s.id === userSection);
+        if (!sec) return null;
+
+        const sx = sec.x + sec.w / 2;
+        const sy = sec.y + sec.h / 2;
+
+        const cx = 215;
+        const cy = 170;
+        const rx = 180;
+        const ry = 142;
+
+        // Angle of seat section
+        const startAngle = Math.atan2(sy - cy, sx - cx);
+        // Angle of target POI
+        const targetAngle = Math.atan2(selectedPoi.y - cy, selectedPoi.x - cx);
+
+        // Shortest angular distance
+        let diff = targetAngle - startAngle;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+
+        const points = [];
+        // Start at seat
+        points.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);
+
+        // Walk to concourse
+        const concourseStartX = cx + rx * Math.cos(startAngle);
+        const concourseStartY = cy + ry * Math.sin(startAngle);
+        points.push(`${concourseStartX.toFixed(1)},${concourseStartY.toFixed(1)}`);
+
+        // Walk along concourse to POI angle
+        const steps = 14;
+        for (let i = 1; i < steps; i++) {
+          const angle = startAngle + (diff * i) / steps;
+          const px = cx + rx * Math.cos(angle);
+          const py = cy + ry * Math.sin(angle);
+          points.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+        }
+
+        // Walk to POI coordinates
+        points.push(`${selectedPoi.x},${selectedPoi.y}`);
+        const dAttr = `M ` + points.join(' L ');
+
         return (
-          <g key={poi.id}>
-            <circle cx={pos.x} cy={pos.y} r={14} fill="white" stroke="#E2E8F0" strokeWidth={1.5} />
-            <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={12}>
+          <path
+            d={dAttr}
+            fill="none"
+            stroke="#10B981"
+            strokeWidth={3}
+            className="poi-path-line"
+            style={{ 
+              strokeDasharray: '6 4',
+              animation: 'mapPathDash 1.2s linear infinite',
+              filter: 'drop-shadow(0 0 3px rgba(16,185,129,0.6))'
+            }}
+          />
+        );
+      })()}
+
+      {/* POI icons based on active filter or selected POI */}
+      {POIS.map((poi) => {
+        const isSelected = poi.id === selectedPoiId;
+        const matchesFilter = activePOI === 'all' || poi.type === activePOI;
+        
+        if (!matchesFilter && !isSelected) return null;
+        
+        return (
+          <g key={poi.id} style={{ cursor: 'pointer' }} onClick={() => onSelectPoi(poi.id === selectedPoiId ? null : poi.id)}>
+            {isSelected && (
+              <circle
+                cx={poi.x} cy={poi.y} r={22}
+                fill="none"
+                stroke="#EF4444"
+                strokeWidth={2}
+                style={{ animation: 'live-pulse 1.5s infinite' }}
+              />
+            )}
+            <circle 
+              cx={poi.x} cy={poi.y} r={14} 
+              fill={isSelected ? '#FEF2F2' : 'white'} 
+              stroke={isSelected ? '#EF4444' : '#E2E8F0'} 
+              strokeWidth={isSelected ? 2 : 1.5} 
+            />
+            <text x={poi.x} y={poi.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={12}>
               {poi.icon}
             </text>
           </g>
@@ -329,6 +408,11 @@ export default function StadiumMap() {
   const { state, dispatch } = useApp();
   const event = EVENTS_BY_SPORT[state.selectedSport];
   const activePOI = state.poiFilter || 'all';
+  const [selectedPoiId, setSelectedPoiId] = useState(null);
+
+  useEffect(() => {
+    setSelectedPoiId(null);
+  }, [activePOI]);
 
   const userSection = event?.section ? `${event.section}` : 'B2';
   // Find closest section label to user section
@@ -369,6 +453,8 @@ export default function StadiumMap() {
           userSection={mappedSection?.id}
           recommendedGateLetter={recommendedGateLetter}
           sportId={state.selectedSport}
+          selectedPoiId={selectedPoiId}
+          onSelectPoi={setSelectedPoiId}
         />
         <div className="map-controls">
           <button className="map-ctrl-btn" title="Zoom in">＋</button>
@@ -410,7 +496,11 @@ export default function StadiumMap() {
         {filteredPOIs.map(poi => {
           const wait = state.poiWaits[poi.id] ?? poi.baseWait;
           return (
-            <div key={poi.id} className="poi-item">
+            <div
+              key={poi.id}
+              className={`poi-item ${poi.id === selectedPoiId ? 'active' : ''}`}
+              onClick={() => setSelectedPoiId(poi.id === selectedPoiId ? null : poi.id)}
+            >
               <div className="poi-icon" style={{
                 background: poi.type === 'food' ? '#FEF3C7' :
                   poi.type === 'restroom' ? '#EFF6FF' :

@@ -2385,3 +2385,12 @@ a { text-decoration: none; color: var(--primary); }
   transform: translateY(0.5px);
 }
 
+/* Active POI selection card styling */
+.poi-item.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: var(--shadow-sm);
+  transform: scale(1.01);
+}
+
+

@@ -23,20 +23,20 @@ export const GATES = [
 ];
 
 export const POIS = [
-  { id: 'r1', type: 'restroom', name: 'Restrooms (Level 1)', icon: '🚻', loc: 'Near Gate B', distance: '45m', baseWait: 3 },
-  { id: 'r2', type: 'restroom', name: 'Restrooms (Level 2)', icon: '🚻', loc: 'Block C Central', distance: '85m', baseWait: 7 },
-  { id: 'r3', type: 'restroom', name: 'Restrooms (Level 3)', icon: '🚻', loc: 'VIP Section', distance: '120m', baseWait: 2 },
-  { id: 'f1', type: 'food', name: 'Spice Bowl', icon: '🍛', loc: 'Level 2, Block A', distance: '65m', baseWait: 8 },
-  { id: 'f2', type: 'food', name: 'Grill Zone', icon: '🍗', loc: 'Level 1, Block C', distance: '110m', baseWait: 14 },
-  { id: 'f3', type: 'food', name: 'Sip & Go', icon: '🥤', loc: 'Level 1, Block B', distance: '40m', baseWait: 4 },
-  { id: 'f4', type: 'food', name: 'Snack Shack', icon: '🍿', loc: 'Level 3, Block D', distance: '130m', baseWait: 6 },
-  { id: 'e1', type: 'exit', name: 'Exit A (North)', icon: '🚪', loc: 'Gate A', distance: '180m', baseWait: 0 },
-  { id: 'e2', type: 'exit', name: 'Exit B (East)', icon: '🚪', loc: 'Gate B', distance: '95m', baseWait: 0 },
-  { id: 'e3', type: 'exit', name: 'Exit C (West)', icon: '🚪', loc: 'Gate C', distance: '200m', baseWait: 0 },
-  { id: 'aid1', type: 'medical', name: 'First Aid Post', icon: '🏥', loc: 'Level 1, Gate A vicinity', distance: '75m', baseWait: 0 },
-  { id: 'aid2', type: 'medical', name: 'Medical Room', icon: '⚕️', loc: 'Level 2, Block B', distance: '90m', baseWait: 0 },
-  { id: 'p1', type: 'parking', name: 'Parking Lot P1', icon: '🅿️', loc: 'North Entrance', distance: '350m', baseWait: 0 },
-  { id: 'p2', type: 'parking', name: 'Parking Lot P2', icon: '🅿️', loc: 'East Entrance', distance: '280m', baseWait: 0 },
+  { id: 'r1', type: 'restroom', name: 'Restrooms (Level 1)', icon: '🚻', loc: 'Near Gate B', distance: '45m', baseWait: 3, x: 382, y: 148 },
+  { id: 'r2', type: 'restroom', name: 'Restrooms (Level 2)', icon: '🚻', loc: 'Block C Central', distance: '85m', baseWait: 7, x: 48, y: 152 },
+  { id: 'r3', type: 'restroom', name: 'Restrooms (Level 3)', icon: '🚻', loc: 'VIP Section', distance: '120m', baseWait: 2, x: 215, y: 35 },
+  { id: 'f1', type: 'food', name: 'Spice Bowl', icon: '🍛', loc: 'Level 2, Block A', distance: '65m', baseWait: 8, x: 180, y: 25 },
+  { id: 'f2', type: 'food', name: 'Grill Zone', icon: '🍗', loc: 'Level 1, Block C', distance: '110m', baseWait: 14, x: 70, y: 222 },
+  { id: 'f3', type: 'food', name: 'Sip & Go', icon: '🥤', loc: 'Level 1, Block B', distance: '40m', baseWait: 4, x: 360, y: 110 },
+  { id: 'f4', type: 'food', name: 'Snack Shack', icon: '🍿', loc: 'Level 3, Block D', distance: '130m', baseWait: 6, x: 250, y: 310 },
+  { id: 'e1', type: 'exit', name: 'Exit A (North)', icon: '🚪', loc: 'Gate A', distance: '180m', baseWait: 0, x: 215, y: 12 },
+  { id: 'e2', type: 'exit', name: 'Exit B (East)', icon: '🚪', loc: 'Gate B', distance: '95m', baseWait: 0, x: 410, y: 170 },
+  { id: 'e3', type: 'exit', name: 'Exit C (West)', icon: '🚪', loc: 'Gate C', distance: '200m', baseWait: 0, x: 20, y: 170 },
+  { id: 'aid1', type: 'medical', name: 'First Aid Post', icon: '🏥', loc: 'Level 1, Gate A vicinity', distance: '75m', baseWait: 0, x: 245, y: 20 },
+  { id: 'aid2', type: 'medical', name: 'Medical Room', icon: '⚕️', loc: 'Level 2, Block B', distance: '90m', baseWait: 0, x: 340, y: 230 },
+  { id: 'p1', type: 'parking', name: 'Parking Lot P1', icon: '🅿️', loc: 'North Entrance', distance: '350m', baseWait: 0, x: 170, y: 15 },
+  { id: 'p2', type: 'parking', name: 'Parking Lot P2', icon: '🅿️', loc: 'East Entrance', distance: '280m', baseWait: 0, x: 400, y: 210 },
 ];
 
 export const POI_TYPES = [
