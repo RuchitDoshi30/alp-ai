@@ -288,9 +288,9 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
 }
 
 export default function StadiumMap() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const event = EVENTS_BY_SPORT[state.selectedSport];
-  const [activePOI, setActivePOI] = useState('all');
+  const activePOI = state.poiFilter || 'all';
 
   const userSection = event?.section ? `${event.section}` : 'B2';
   // Find closest section label to user section
@@ -360,7 +360,7 @@ export default function StadiumMap() {
           <button
             key={pt.key}
             className={`poi-chip ${activePOI === pt.key ? 'active' : ''}`}
-            onClick={() => setActivePOI(pt.key)}
+            onClick={() => dispatch({ type: 'SET_POI_FILTER', filter: pt.key })}
           >
             {pt.icon} {pt.label}
           </button>

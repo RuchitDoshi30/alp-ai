@@ -99,6 +99,93 @@ function getLocalFallbackResponse(text, state) {
   return `🤖 I've checked the live stadium sensors! Restroom lines near Section **${event?.section || 'B'}** are under **2 mins**, and the food stand **${shortestStand?.name || 'Pizza'}** has the shortest queue (**${shortestTime} mins**). Let me know if you need exit directions or live match statistics!`;
 }
 
+function getChatActions(text) {
+  const textLower = text.toLowerCase();
+  const actions = [];
+
+  // Restrooms
+  if (textLower.includes('restroom') || textLower.includes('toilet') || textLower.includes('loo') || textLower.includes('washroom') || textLower.includes('bathroom')) {
+    actions.push({
+      label: '🚻 View Restrooms Map',
+      page: 'navigate',
+      filter: 'restroom',
+      color: '#3b82f6',
+      icon: '🚻'
+    });
+  }
+
+  // Gates & Exits
+  if (textLower.includes('gate') || textLower.includes('exit') || textLower.includes('leave') || textLower.includes('entrance') || textLower.includes('turnstile')) {
+    actions.push({
+      label: '🚪 View Gates & Exits',
+      page: 'navigate',
+      filter: 'exit',
+      color: '#10b981',
+      icon: '🚪'
+    });
+    if (textLower.includes('parking')) {
+      actions.push({
+        label: '🅿️ View Parking Areas',
+        page: 'navigate',
+        filter: 'parking',
+        color: '#6b7280',
+        icon: '🅿️'
+      });
+    }
+  }
+
+  // Medical
+  if (textLower.includes('medical') || textLower.includes('first aid') || textLower.includes('doctor') || textLower.includes('injury') || textLower.includes('hospital')) {
+    actions.push({
+      label: '🏥 View First Aid Stations',
+      page: 'navigate',
+      filter: 'medical',
+      color: '#ef4444',
+      icon: '🏥'
+    });
+  }
+
+  // Food & Beverage
+  if (textLower.includes('food') || textLower.includes('line') || textLower.includes('queue') || textLower.includes('eat') || textLower.includes('hungry') || textLower.includes('menu') || textLower.includes('snack') || textLower.includes('drink') || textLower.includes('pizza') || textLower.includes('burger') || textLower.includes('concession')) {
+    actions.push({
+      label: '🍔 Order Food (Seat Delivery)',
+      page: 'food',
+      color: '#f59e0b',
+      icon: '🍕'
+    });
+    actions.push({
+      label: '🍽️ View Food Stands Map',
+      page: 'navigate',
+      filter: 'food',
+      color: '#d97706',
+      icon: '🍔'
+    });
+  }
+
+  // Score/Match info
+  if (textLower.includes('score') || textLower.includes('winning') || textLower.includes('match') || textLower.includes('runs') || textLower.includes('goals') || textLower.includes('points') || textLower.includes('wickets')) {
+    actions.push({
+      label: '📊 Open Dashboard',
+      page: 'home',
+      color: '#3b82f6',
+      icon: '📊'
+    });
+  }
+
+  // Generic Map/Section congestion
+  if (actions.length === 0 && (textLower.includes('section') || textLower.includes('crowd') || textLower.includes('heatmap') || textLower.includes('busy') || textLower.includes('navigate') || textLower.includes('map') || textLower.includes('where is') || textLower.includes('direction'))) {
+    actions.push({
+      label: '🧭 Open Stadium Map',
+      page: 'navigate',
+      filter: 'all',
+      color: '#3b82f6',
+      icon: '🧭'
+    });
+  }
+
+  return actions;
+}
+
 export default function GeminiChat() {
   const { state, dispatch } = useApp();
   const [input, setInput] = useState('');
@@ -200,14 +287,68 @@ export default function GeminiChat() {
           </div>
         )}
 
-        {messages.map(msg => (
-          <div key={msg.id} className={`chat-bubble ${msg.role === 'user' ? 'user' : 'ai'}`}>
-            {msg.role === 'assistant' && (
-              <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>🤖 VenueIQ AI</div>
-            )}
-            {msg.content}
-          </div>
-        ))}
+        {messages.map(msg => {
+          const isAi = msg.role === 'assistant';
+          const actions = isAi ? getChatActions(msg.content) : [];
+
+          return (
+            <div key={msg.id} className={`chat-bubble ${msg.role === 'user' ? 'user' : 'ai'}`} style={{ display: 'flex', flexDirection: 'column' }}>
+              {isAi && (
+                <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>🤖 VenueIQ AI</div>
+              )}
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {msg.content}
+              </div>
+
+              {isAi && actions.length > 0 && (
+                <div className="chat-action-container" style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginTop: '10px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid var(--border)',
+                  width: '100%',
+                }}>
+                  {actions.map((act, aIdx) => (
+                    <button
+                      key={aIdx}
+                      onClick={() => {
+                        if (act.filter) {
+                          dispatch({ type: 'SET_POI_FILTER', filter: act.filter });
+                        }
+                        dispatch({ type: 'SET_PAGE', page: act.page });
+                      }}
+                      className="chat-action-btn"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: `linear-gradient(135deg, ${act.color}15 0%, ${act.color}05 100%)`,
+                        border: `1.5px solid ${act.color}30`,
+                        borderRadius: 'var(--radius-sm)',
+                        color: act.color,
+                        fontSize: '0.78rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        textAlign: 'left',
+                        animation: 'fadeSlideIn 0.3s ease',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{act.icon}</span>
+                        <span>{act.label}</span>
+                      </span>
+                      <span className="chat-action-arrow" style={{ transition: 'transform 0.2s ease' }}>→</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {isTyping && (
           <div className="typing-indicator">

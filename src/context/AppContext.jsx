@@ -14,6 +14,7 @@ try {
       if (!loadedState.notifications) loadedState.notifications = [];
       if (!loadedState.chatMessages) loadedState.chatMessages = [];
       if (!loadedState.orders) loadedState.orders = [];
+      if (!loadedState.poiFilter) loadedState.poiFilter = 'all';
     }
   }
 } catch (e) {
@@ -37,6 +38,7 @@ const initialState = loadedState || {
 
   // Navigation
   activePage: 'home',
+  poiFilter: 'all',
 
   // Event & Score
   scoreIdx: 2, // current period index
@@ -181,6 +183,9 @@ function reducer(state, action) {
 
     case 'SET_PAGE':
       return { ...state, activePage: action.page };
+
+    case 'SET_POI_FILTER':
+      return { ...state, poiFilter: action.filter };
 
     case 'TICK_LIVE_DATA': {
       const newWaits = {};
@@ -396,6 +401,7 @@ function reducer(state, action) {
         onboarded: false,
         selectedSport: null,
         activePage: 'home',
+        poiFilter: 'all',
         scoreIdx: 2,
         liveWaitTimes: {},
         crowdDensities: {},

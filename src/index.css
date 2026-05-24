@@ -2370,3 +2370,18 @@ a { text-decoration: none; color: var(--primary); }
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
+
+/* AI Chat Interactive Action Buttons */
+.chat-action-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.chat-action-btn:hover .chat-action-arrow {
+  transform: translateX(3px);
+}
+
+.chat-action-btn:active {
+  transform: translateY(0.5px);
+}
+
