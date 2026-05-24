@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/useApp';
-import { SPORTS, EVENTS_BY_SPORT } from '../../data/mockEvent';
 import { ADS } from '../../data/mockAds';
-import { STANDS } from '../../data/mockMenu';
 
 // ─── LEFT SIDEBAR: LIVE EVENT DATA & commentary ─────────────────────
 export function LeftSidebar() {
@@ -28,10 +26,15 @@ export function LeftSidebar() {
   }, [state.onboarded]);
 
   if (!state.onboarded) {
-    const sportsKeys = Object.keys(EVENTS_BY_SPORT);
-    const previewSportId = sportsKeys[previewSportIdx] || 'cricket';
-    const previewEvent = EVENTS_BY_SPORT[previewSportId];
-    const previewSport = SPORTS[previewSportId];
+    const previewSports = [
+      { id: 'cricket', icon: '🏏', name: 'Cricket', color: '#2563EB' },
+      { id: 'football', icon: '⚽', name: 'Football', color: '#16A34A' },
+      { id: 'basketball', icon: '🏀', name: 'Basketball', color: '#EA580C' },
+      { id: 'hockey', icon: '🏑', name: 'Hockey', color: '#7C3AED' },
+      { id: 'tennis', icon: '🎾', name: 'Tennis', color: '#CA8A04' },
+      { id: 'kabaddi', icon: '🤼', name: 'Kabaddi', color: '#DC2626' },
+    ];
+    const previewSport = previewSports[previewSportIdx % previewSports.length];
 
     return (
       <div className="desktop-sidebar left-sidebar">
@@ -86,7 +89,7 @@ export function LeftSidebar() {
         </div>
 
         {/* Rotating Games and Stadiums Previews */}
-        {previewSport && previewEvent && (
+        {previewSport && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%)',
             border: '1.5px dashed var(--primary-mid)',
@@ -105,40 +108,32 @@ export function LeftSidebar() {
             </div>
 
             <h4 style={{ fontSize: '0.9375rem', color: 'var(--text-primary)', fontWeight: '900', margin: '4px 0' }}>
-              {previewEvent.venue}
+              VenueIQ Stadium
             </h4>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-              📍 {previewEvent.city}
+              📍 Mumbai, India
             </p>
 
-            {/* Miniature matchup mockup */}
             <div style={{ 
-              background: 'white', 
-              padding: '10px', 
-              borderRadius: 'var(--radius-sm)', 
-              border: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-around',
-              alignItems: 'center',
-              marginBottom: '10px'
+              background: 'white', padding: '10px', borderRadius: 'var(--radius-sm)', 
+              border: '1px solid var(--border)', display: 'flex',
+              justifyContent: 'space-around', alignItems: 'center', marginBottom: '10px'
             }}>
               <div style={{ fontWeight: '800', fontSize: '0.8125rem' }}>
-                {previewEvent.home.shortName} {previewEvent.home.emoji}
+                Home {previewSport.icon}
               </div>
               <div style={{ background: 'var(--surface-3)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.6875rem', fontWeight: '800', color: 'var(--primary)' }}>
                 PREVIEW
               </div>
               <div style={{ fontWeight: '800', fontSize: '0.8125rem' }}>
-                {previewEvent.away.emoji} {previewEvent.away.shortName}
+                {previewSport.icon} Away
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <div style={{ background: 'rgba(255,255,255,0.7)', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
                 <div style={{ fontSize: '0.5625rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '700' }}>Capacity</div>
-                <div style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                  {previewEvent.totalCapacity.toLocaleString()}
-                </div>
+                <div style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--text-primary)' }}>33,000</div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.7)', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
                 <div style={{ fontSize: '0.5625rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '700' }}>Gate Status</div>
@@ -151,16 +146,16 @@ export function LeftSidebar() {
     );
   }
 
-  const sportId = state.selectedSport;
-  const sport = SPORTS[sportId];
-  const event = EVENTS_BY_SPORT[sportId];
+  const event = state.event;
+  const venue = state.venue;
+  const sportIcon = event?.sport === 'cricket' ? '🏏' : event?.sport === 'football' ? '⚽' : '🏆';
 
   if (!event) return null;
 
-  // Real-time calculations
-  const homeScore = event.scores.home[state.scoreIdx] ?? 0;
-  const awayScore = event.scores.away[state.scoreIdx] ?? 0;
-  const currentPeriod = event.periods[state.scoreIdx] ?? '';
+  // Real-time data from API
+  const homeScore = event.homeScore ?? 0;
+  const awayScore = event.awayScore ?? 0;
+  const currentPeriod = event.period ?? '';
 
   return (
     <div className="desktop-sidebar left-sidebar">
@@ -200,9 +195,9 @@ export function LeftSidebar() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', margin: '8px 0' }}>
           {/* Home team */}
           <div style={{ textAlign: 'center', flex: 1 }}>
-            <div style={{ fontSize: '2rem' }}>{event.home.emoji}</div>
-            <div style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {event.home.shortName}
+            <div style={{ fontSize: '2rem' }}>{event.homeTeamLogo || '🏠'}</div>
+            <div style={{ fontWeight: '800', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+              {event.homeTeamShort}
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text-primary)', marginTop: '4px' }}>
               {homeScore}
@@ -221,9 +216,9 @@ export function LeftSidebar() {
 
           {/* Away team */}
           <div style={{ textAlign: 'center', flex: 1 }}>
-            <div style={{ fontSize: '2rem' }}>{event.away.emoji}</div>
-            <div style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {event.away.shortName}
+            <div style={{ fontSize: '2rem' }}>{event.awayTeamLogo || '🏟️'}</div>
+            <div style={{ fontWeight: '800', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+              {event.awayTeamShort}
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text-primary)', marginTop: '4px' }}>
               {awayScore}
@@ -355,8 +350,8 @@ export function RightSidebar() {
     { stand: 'Royal Zaika', item: 'Butter Chicken Roll', price: '₹180', oldPrice: '₹220', discount: 'BOGO Offer' }
   ];
 
-  const sportColor = state.onboarded ? SPORTS[state.selectedSport]?.color : 'var(--primary)';
-  const activeEvent = state.onboarded ? EVENTS_BY_SPORT[state.selectedSport] : null;
+  const sportColor = 'var(--primary)';
+  const activeEvent = state.onboarded ? state.event : null;
 
   return (
     <div className="desktop-sidebar right-sidebar">

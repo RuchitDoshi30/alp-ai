@@ -1,8 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/useApp';
-import { EVENTS_BY_SPORT, SPORTS } from '../../data/mockEvent';
-import { STANDS } from '../../data/mockMenu';
-import { GATES } from '../../data/mockCrowd';
 
 const GEMINI_API_KEY = 'AIzaSyC-CfrARS83UyAQZKWa_sAt3GtfSdd0bww';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -17,24 +14,36 @@ const SUGGESTIONS = [
 ];
 
 function buildSystemContext(state) {
-  const sport = SPORTS[state.selectedSport];
-  const event = EVENTS_BY_SPORT[state.selectedSport];
-  const idx = state.scoreIdx;
+  const event = state.event;
+  const venue = state.venue;
+  const ticket = state.ticket;
+  const zones = state.crowdZones || [];
+  const gates = state.gates || [];
+  const vendors = state.vendors || [];
+  const queues = state.queueStatuses || [];
 
-  const waitTimes = STANDS.map(s => `${s.name}: ${state.liveWaitTimes[s.id] ?? s.baseWait} min wait`).join(', ');
-  const gates = GATES.map(g => {
-    const c = state.gateCongestion[g.id] ?? g.baseCongestion;
-    return `${g.name} (${g.direction}): ${Math.round(c * 100)}% congested`;
+  const waitTimes = vendors.map(v => {
+    const q = queues.find(q => q.vendorId === v.id);
+    return `${v.name}: ${q?.waitMinutes ?? 5} min wait`;
   }).join(', ');
 
-  const score = event ? `${event.home.shortName} ${event.scores.home[idx]}-${event.scores.away[idx]} ${event.away.shortName}` : 'N/A';
+  const gateInfo = gates.map(g =>
+    `${g.name} (${g.direction}): ${Math.round(g.congestion * 100)}% congested`
+  ).join(', ');
 
-  return `You are VenueIQ, an AI assistant for fans attending a live ${sport?.name ?? 'sports'} event.
-Current event: ${event?.matchTitle ?? 'Sporting Event'} at ${event?.venue ?? 'Stadium'}.
-Fan's seat: Section ${event?.section ?? 'B'}, Row ${event?.row ?? '10'}, Seat ${event?.seat ?? '5'}.
-Current score: ${score}. Period: ${event?.periods[idx] ?? 'In progress'}.
+  const crowdInfo = zones.map(z =>
+    `Zone ${z.zoneName}: ${Math.round(z.density * 100)}% full`
+  ).join(', ');
+
+  const score = event ? `${event.homeTeamShort} ${event.homeScore}-${event.awayScore} ${event.awayTeamShort}` : 'N/A';
+
+  return `You are VenueIQ, an AI assistant for fans attending a live ${event?.sport ?? 'sports'} event.
+Current event: ${event?.title ?? 'Sporting Event'} at ${venue?.name ?? 'Stadium'}, ${venue?.city ?? ''}.
+Fan's seat: Section ${ticket?.section ?? 'B2'}, Row ${ticket?.row ?? 'R12'}, Seat ${ticket?.seat ?? '18'}.
+Current score: ${score}. Period: ${event?.period ?? 'In progress'}.
 Food queue wait times: ${waitTimes}.
-Gate congestion: ${gates}.
+Gate congestion: ${gateInfo}.
+Crowd zones: ${crowdInfo}.
 Keep answers short, helpful, and friendly. Use emojis sparingly. Focus on practical advice.`;
 }
 

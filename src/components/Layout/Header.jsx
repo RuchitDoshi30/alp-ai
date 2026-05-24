@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../../context/useApp';
-import { EVENTS_BY_SPORT, SPORTS } from '../../data/mockEvent';
+
 
 export default function Header() {
   const { state, dispatch } = useApp();
   const [showDrawer, setShowDrawer] = useState(false);
   
-  const event = EVENTS_BY_SPORT[state.selectedSport];
-  const sport = SPORTS[state.selectedSport];
+  const event = state.event;
+  const sportIcon = event?.sport === 'cricket' ? '🏏' : event?.sport === 'football' ? '⚽' : '🏆';
 
   const notifs = state.notifications || [];
   const unreadCount = notifs.filter(n => !n.read).length;
@@ -45,9 +45,9 @@ export default function Header() {
               fontWeight: '600',
               color: 'var(--text-secondary)',
             }}>
-              <span>{sport?.icon}</span>
+              <span>{sportIcon}</span>
               <span style={{ color: 'var(--text-primary)' }}>
-                {event.home.shortName} vs {event.away.shortName}
+                {event.homeTeamShort} vs {event.awayTeamShort}
               </span>
             </div>
           </div>

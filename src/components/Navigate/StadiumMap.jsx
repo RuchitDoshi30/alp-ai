@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SECTIONS, POIS, getDensityColor, POI_TYPES } from '../../data/mockCrowd';
 import { useApp } from '../../context/useApp';
-import { EVENTS_BY_SPORT } from '../../data/mockEvent';
+
 
 function PlayingField({ sportId }) {
   // Center is (215, 170)
@@ -408,7 +408,8 @@ function StadiumSVGMap({ densities, activePOI, userSection, recommendedGateLette
 
 export default function StadiumMap() {
   const { state, dispatch } = useApp();
-  const event = EVENTS_BY_SPORT[state.selectedSport];
+  const event = state.event;
+  const ticket = state.ticket;
   const activePOI = state.poiFilter || 'all';
   const [selectedPoiId, setSelectedPoiId] = useState(null);
 
@@ -416,7 +417,7 @@ export default function StadiumMap() {
     setSelectedPoiId(null);
   }, [activePOI]);
 
-  const userSection = event?.section ? `${event.section}` : 'B2';
+  const userSection = ticket?.section ? `${ticket.section}` : 'B2';
   // Find closest section label to user section
   const mappedSection = SECTIONS.find(s => s.label === userSection || s.label === `B2`) || SECTIONS[4];
 

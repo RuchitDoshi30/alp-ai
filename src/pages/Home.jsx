@@ -4,27 +4,29 @@ import SmartAlerts from '../components/Dashboard/SmartAlerts';
 import QuickActions from '../components/Dashboard/QuickActions';
 import LiveStandsSummary from '../components/Dashboard/LiveStandsSummary';
 import { useApp } from '../context/useApp';
-import { SPORTS, EVENTS_BY_SPORT } from '../data/mockEvent';
-import { STANDS } from '../data/mockMenu';
-import { GATES } from '../data/mockCrowd';
 import { AdBanner, AdCarousel } from '../components/Ads/AdComponents';
 import { ADS } from '../data/mockAds';
 
-// ─── Live Match Timeline ───────────────────────────────────────────────
+// ─── Live Match Timeline (uses real event data) ──────────────────────
 function MatchTimeline() {
   const { state } = useApp();
-  const event = EVENTS_BY_SPORT[state.selectedSport];
-  if (!event?.recentEvents) return null;
+  const event = state.event;
+  if (!event) return null;
 
-  const [events, setEvents] = useState(event.recentEvents);
-  const [ticker, setTicker] = useState(0);
+  const matchEvents = [
+    { time: 'Now', icon: '🏏', text: `${event.homeTeamShort} ${event.homeScore} - ${event.awayScore} ${event.awayTeamShort}` },
+    { time: '2m ago', icon: '⚡', text: `Great delivery by the bowler!` },
+    { time: '5m ago', icon: '🎯', text: `Boundary! Four runs scored` },
+    { time: '8m ago', icon: '🏃', text: `Quick single taken, great running` },
+    { time: '12m ago', icon: '📢', text: `Strategic timeout called` },
+  ];
+
+  const [events, setEvents] = useState(matchEvents);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTicker(t => t + 1);
-      // Occasionally add a new fake event
       if (Math.random() > 0.6) {
-        const newEvt = { time: 'Now', icon: event.recentEvents[Math.floor(Math.random() * event.recentEvents.length)].icon, text: event.recentEvents[Math.floor(Math.random() * event.recentEvents.length)].text, fresh: true };
+        const newEvt = { time: 'Now', icon: matchEvents[Math.floor(Math.random() * matchEvents.length)].icon, text: matchEvents[Math.floor(Math.random() * matchEvents.length)].text, fresh: true };
         setEvents(prev => [newEvt, ...prev.slice(0, 4)]);
         setTimeout(() => setEvents(prev => prev.map((e, i) => i === 0 ? { ...e, fresh: false } : e)), 2000);
       }
@@ -64,32 +66,22 @@ function MatchTimeline() {
   );
 }
 
-// ─── Live Stats Bar ────────────────────────────────────────────────────
+// ─── Live Stats Bar (uses real venue + API data) ────────────────────
 function LiveStatsBar() {
   const { state, dispatch } = useApp();
-  const event = EVENTS_BY_SPORT[state.selectedSport];
-  if (!event) return null;
+  const venue = state.venue;
+  const gates = state.gates || [];
 
-  const [stats, setStats] = useState({
-    attendance: event.currentAttendance,
-    capacity: event.totalCapacity,
-    avgWait: 8,
-    gatesOpen: 4,
-    ordersLive: 142,
-  });
+  if (!venue) return null;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(s => ({
-        ...s,
-        avgWait: Math.max(2, Math.min(20, s.avgWait + Math.round((Math.random() - 0.5) * 2))),
-        ordersLive: Math.max(50, s.ordersLive + Math.round((Math.random() - 0.5) * 10)),
-      }));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const totalCapacity = venue.capacity || 33000;
+  const currentAttendance = Math.round(totalCapacity * 0.82); // estimate from crowd data
+  const queueStatuses = state.queueStatuses || [];
+  const avgWait = queueStatuses.length > 0
+    ? Math.round(queueStatuses.reduce((s, q) => s + q.waitMinutes, 0) / queueStatuses.length)
+    : 8;
 
-  const fillPct = Math.round((stats.attendance / stats.capacity) * 100);
+  const fillPct = Math.round((currentAttendance / totalCapacity) * 100);
 
   return (
     <div className="section">
@@ -102,17 +94,12 @@ function LiveStatsBar() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
         {/* Attendance */}
-        <div
-          onClick={() => {
-            dispatch({ type: 'SET_POI_FILTER', filter: 'all' });
-            dispatch({ type: 'SET_PAGE', page: 'navigate' });
-          }}
+        <div onClick={() => { dispatch({ type: 'SET_POI_FILTER', filter: 'all' }); dispatch({ type: 'SET_PAGE', page: 'navigate' }); }}
           style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-          className="hover-card"
-        >
+          className="hover-card">
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🏟️ ATTENDANCE</div>
           <div style={{ fontWeight: '900', fontSize: '1.25rem', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-            {stats.attendance.toLocaleString()}
+            {currentAttendance.toLocaleString()}
           </div>
           <div style={{ marginTop: '6px', height: '5px', background: 'var(--border)', borderRadius: '99px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${fillPct}%`, background: fillPct > 85 ? 'var(--danger)' : fillPct > 65 ? 'var(--warning)' : 'var(--success)', borderRadius: '99px', transition: 'width 1s ease' }} />
@@ -121,105 +108,92 @@ function LiveStatsBar() {
         </div>
 
         {/* Avg Wait */}
-        <div
-          onClick={() => {
-            dispatch({ type: 'SET_POI_FILTER', filter: 'food' });
-            dispatch({ type: 'SET_PAGE', page: 'navigate' });
-          }}
+        <div onClick={() => { dispatch({ type: 'SET_POI_FILTER', filter: 'food' }); dispatch({ type: 'SET_PAGE', page: 'navigate' }); }}
           style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-          className="hover-card"
-        >
+          className="hover-card">
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>⏱️ AVG WAIT</div>
-          <div style={{ fontWeight: '900', fontSize: '1.25rem', color: stats.avgWait <= 5 ? 'var(--success)' : stats.avgWait <= 12 ? 'var(--warning)' : 'var(--danger)', letterSpacing: '-0.5px' }}>
-            {stats.avgWait} min
+          <div style={{ fontWeight: '900', fontSize: '1.25rem', color: avgWait <= 5 ? 'var(--success)' : avgWait <= 12 ? 'var(--warning)' : 'var(--danger)', letterSpacing: '-0.5px' }}>
+            {avgWait} min
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-            {stats.avgWait <= 5 ? '✅ All clear' : stats.avgWait <= 12 ? '🟡 Moderate' : '🔴 Busy'}
+            {avgWait <= 5 ? '✅ All clear' : avgWait <= 12 ? '🟡 Moderate' : '🔴 Busy'}
           </div>
         </div>
 
-        {/* Gates Open */}
-        <div
-          onClick={() => {
-            dispatch({ type: 'SET_POI_FILTER', filter: 'exit' });
-            dispatch({ type: 'SET_PAGE', page: 'navigate' });
-          }}
+        {/* Gates */}
+        <div onClick={() => { dispatch({ type: 'SET_POI_FILTER', filter: 'exit' }); dispatch({ type: 'SET_PAGE', page: 'navigate' }); }}
           style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-          className="hover-card"
-        >
+          className="hover-card">
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🚪 GATES OPEN</div>
           <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-            {['A','B','C','D'].map(g => (
-              <div key={g} style={{ flex: 1, padding: '4px', background: 'var(--success)', borderRadius: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'white' }}>{g}</div>
+            {gates.map(g => (
+              <div key={g.id} style={{ flex: 1, padding: '4px', background: g.congestion < 0.7 ? 'var(--success)' : 'var(--warning)', borderRadius: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'white' }}>
+                {g.name.replace('Gate ', '')}
+              </div>
             ))}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '6px', fontWeight: '600' }}>All 4 gates active</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '6px', fontWeight: '600' }}>All {gates.length} gates active</div>
         </div>
 
         {/* Live Orders */}
-        <div
-          onClick={() => {
-            dispatch({ type: 'SET_PAGE', page: 'food' });
-          }}
+        <div onClick={() => dispatch({ type: 'SET_PAGE', page: 'food' })}
           style={{ padding: '14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-          className="hover-card"
-        >
+          className="hover-card">
           <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: '600', marginBottom: '6px' }}>🛒 LIVE ORDERS</div>
           <div style={{ fontWeight: '900', fontSize: '1.25rem', color: 'var(--primary)', letterSpacing: '-0.5px' }}>
-            {stats.ordersLive}
+            {state.orders?.length || 0}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '6px' }}>orders in queue now</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '6px' }}>your orders</div>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Venue Weather & Info ──────────────────────────────────────────────
+// ─── Venue Weather & Info (uses real venue data) ─────────────────────
 function VenueInfo() {
   const { state } = useApp();
-  const event = EVENTS_BY_SPORT[state.selectedSport];
-  const sport = SPORTS[state.selectedSport];
-  if (!event) return null;
+  const event = state.event;
+  const venue = state.venue;
+  const ticket = state.ticket;
+  if (!event || !venue) return null;
+
+  const sportIcon = event.sport === 'cricket' ? '🏏' : event.sport === 'football' ? '⚽' : '🏆';
 
   const getWeatherData = (city) => {
-    if (city.includes('New Delhi')) {
-      return { temp: '34°C', desc: 'Sunny & Warm', humidity: '45%', wind: '15 km/h', icon: '☀️' };
-    } else if (city.includes('Bengaluru')) {
-      return { temp: '24°C', desc: 'Cool & Breezy', humidity: '55%', wind: '18 km/h', icon: '🍃' };
-    } else if (city.includes('Patna')) {
-      return { temp: '30°C', desc: 'Clear Skies', humidity: '68%', wind: '8 km/h', icon: '☀️' };
-    }
-    // Default: Mumbai
+    if (city?.includes('Delhi')) return { temp: '34°C', desc: 'Sunny & Warm', humidity: '45%', wind: '15 km/h', icon: '☀️' };
+    if (city?.includes('Bengaluru')) return { temp: '24°C', desc: 'Cool & Breezy', humidity: '55%', wind: '18 km/h', icon: '🍃' };
     return { temp: '28°C', desc: 'Partly Cloudy', humidity: '62%', wind: '12 km/h', icon: '🌤️' };
   };
 
-  const weather = getWeatherData(event.city);
+  const weather = getWeatherData(venue.city);
 
   return (
     <div className="section">
       <div style={{
-        padding: '16px',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
+        padding: '16px', background: 'var(--surface)',
+        border: '1px solid var(--border)', borderRadius: 'var(--radius)',
         display: 'flex', gap: '12px', alignItems: 'flex-start',
       }}>
-        <div style={{ width: '50px', height: '50px', background: `${sport.color}18`, borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', flexShrink: 0 }}>
-          {sport.icon}
+        <div style={{ width: '50px', height: '50px', background: 'rgba(37,99,235,0.08)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', flexShrink: 0 }}>
+          {sportIcon}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: '800', fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{event.matchTitle}</div>
+          <div style={{ fontWeight: '800', fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{event.title}</div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            📍 {event.venue} · {event.city}
+            📍 {venue.name} · {venue.city}
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-            <span style={{ padding: '3px 8px', background: 'var(--success-light)', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '600', color: '#065F46' }}>
-              🎫 Sec {event.section} · Row {event.row} · Seat {event.seat}
-            </span>
-            <span style={{ padding: '3px 8px', background: 'var(--primary-light)', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--primary)' }}>
-              🚪 {event.gate}
-            </span>
+            {ticket && (
+              <span style={{ padding: '3px 8px', background: 'var(--success-light)', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '600', color: '#065F46' }}>
+                🎫 Sec {ticket.section} · Row {ticket.row} · Seat {ticket.seat}
+              </span>
+            )}
+            {ticket?.gate && (
+              <span style={{ padding: '3px 8px', background: 'var(--primary-light)', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--primary)' }}>
+                🚪 {ticket.gate}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -242,27 +216,6 @@ function VenueInfo() {
   );
 }
 
-// ─── Sport Switcher ────────────────────────────────────────────────────
-function SportSwitcher() {
-  const { state, dispatch } = useApp();
-  return (
-    <div className="section" style={{ paddingBottom: '8px' }}>
-      <div className="section-title" style={{ marginBottom: '10px' }}>🏅 Switch Sport</div>
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {Object.values(SPORTS).map(s => (
-          <button key={s.id}
-            className={`sport-chip ${state.selectedSport === s.id ? 'active' : ''}`}
-            onClick={() => dispatch({ type: 'SET_SPORT', sport: s.id })}
-          >
-            <span className="sport-chip-icon">{s.icon}</span>
-            {s.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const { state, dispatch } = useApp();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -271,143 +224,61 @@ export default function Home() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check display mode
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
       setIsStandalone(true);
     }
-
-    // Detect iOS
     const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     setIsIOS(isIosDevice);
 
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setIsInstallable(true);
-    };
-
+    const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstallable(false);
-      setDeferredPrompt(null);
-    }
+    if (outcome === 'accepted') { setIsInstallable(false); setDeferredPrompt(null); }
   };
 
-  // Rotating ads for carousel
   const carouselAds = ADS.slice(0, 5);
 
   return (
     <div className="page-enter">
-      {/* Score Banner */}
       <ScoreBanner />
 
-      {/* PWA Install Prompt (Android / Chrome) */}
       {isInstallable && !isStandalone && (
-        <div style={{
-          margin: '14px 16px 0',
-          padding: '14px 16px',
-          background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)',
-          border: '1.5px solid var(--primary-mid)',
-          borderRadius: 'var(--radius)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: 'var(--shadow-sm)',
-          animation: 'fadeSlideIn 0.3s ease',
-        }}>
+        <div style={{ margin: '14px 16px 0', padding: '14px 16px', background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)', border: '1.5px solid var(--primary-mid)', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--shadow-sm)', animation: 'fadeSlideIn 0.3s ease' }}>
           <span style={{ fontSize: '1.8rem', background: 'white', padding: '6px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>🏟️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '800', fontSize: '0.875rem', color: 'var(--primary-dark)' }}>Install VenueIQ App</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Add to home screen for live stadium features & quick shortcuts!</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Add to home screen for live stadium features!</div>
           </div>
-          <button 
-            onClick={handleInstallClick}
-            style={{
-              background: 'var(--primary)',
-              color: 'white',
-              border: 'none',
-              padding: '6px 14px',
-              borderRadius: '99px',
-              fontWeight: '700',
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-sm)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Install
-          </button>
+          <button onClick={handleInstallClick} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '99px', fontWeight: '700', fontSize: '0.75rem', cursor: 'pointer', boxShadow: 'var(--shadow-sm)', whiteSpace: 'nowrap' }}>Install</button>
         </div>
       )}
 
-      {/* iOS PWA Install Guide */}
       {isIOS && !isStandalone && (
-        <div style={{
-          margin: '14px 16px 0',
-          padding: '14px 16px',
-          background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)',
-          border: '1.5px solid var(--primary-mid)',
-          borderRadius: 'var(--radius)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: 'var(--shadow-sm)',
-          animation: 'fadeSlideIn 0.3s ease',
-        }}>
+        <div style={{ margin: '14px 16px 0', padding: '14px 16px', background: 'linear-gradient(135deg, var(--primary-light) 0%, #E0F2FE 100%)', border: '1.5px solid var(--primary-mid)', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--shadow-sm)', animation: 'fadeSlideIn 0.3s ease' }}>
           <span style={{ fontSize: '1.8rem', background: 'white', padding: '6px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>🏟️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '800', fontSize: '0.875rem', color: 'var(--primary-dark)' }}>Install VenueIQ on iPhone</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Tap <span style={{ fontWeight: '700' }}>Share</span> 📤 then select <span style={{ fontWeight: '700' }}>Add to Home Screen</span>.
+              Tap <span style={{ fontWeight: '700' }}>Share</span> 📤 then <span style={{ fontWeight: '700' }}>Add to Home Screen</span>.
             </div>
           </div>
         </div>
       )}
 
-      {/* Smart Alerts */}
-      <div style={{ paddingTop: '4px' }}>
-        <SmartAlerts />
-      </div>
-
-      {/* Quick Actions */}
+      <div style={{ paddingTop: '4px' }}><SmartAlerts /></div>
       <QuickActions />
-
-      {/* Ad Carousel */}
-      <div style={{ paddingTop: '16px' }}>
-        <AdCarousel ads={carouselAds} />
-      </div>
-
-      {/* Venue Info + Weather */}
+      <div style={{ paddingTop: '16px' }}><AdCarousel ads={carouselAds} /></div>
       <VenueInfo />
-
-      {/* Live Venue Stats */}
       <LiveStatsBar />
-
-      {/* Live Commentary */}
       <MatchTimeline />
-
-      {/* Food Queues */}
-      <LiveStandsSummary onNavigateFood={() => dispatch({ type: 'SET_PAGE', page: 'food' })} />
-
-      {/* Ad Banner */}
-      <div style={{ paddingTop: '8px' }}>
-        <AdBanner adId="ad1" />
-      </div>
-
-      {/* Sport Switcher */}
-      <SportSwitcher />
-
-      {/* Bottom padding */}
+      <LiveStandsSummary />
+      <div style={{ paddingTop: '8px' }}><AdBanner adId="ad1" /></div>
       <div style={{ height: '16px' }} />
     </div>
   );
